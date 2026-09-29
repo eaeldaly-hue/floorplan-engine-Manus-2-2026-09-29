@@ -21,6 +21,23 @@
 - Tesseract OCR مع بيانات اللغة الإنجليزية.
 - Poppler لتحويل صفحات PDF إلى صور.
 
+يعمل OCR محليًا على خادم التطبيق باستخدام Tesseract؛ لا يستدعي المشروع خدمة OCR خارجية. يجب تثبيت برنامج Tesseract نفسه على النظام، فحزمة Python وحدها لا تكفي.
+
+على macOS باستخدام Homebrew:
+
+```bash
+brew install tesseract poppler
+tesseract --version
+tesseract --list-langs
+```
+
+يجب أن تتضمن قائمة اللغات `eng`. للمخططات التي تحتوي نصوصًا عربية، ثبّت بيانات اللغات الإضافية ثم اضبط اللغة عند تشغيل التطبيق:
+
+```bash
+brew install tesseract-lang
+FLOORPLAN_OCR_LANG=eng+ara python run.py
+```
+
 على Ubuntu/Debian:
 
 ```bash
@@ -58,6 +75,8 @@ HOST=0.0.0.0 PORT=8000 python run.py
 في PowerShell استخدم `$env:HOST='127.0.0.1'; $env:PORT='8000'; python run.py`.
 
 في الصفحة يمكنك رفع ملفك أو الضغط على **جرّب على المخطط التجريبي** لمشاهدة تحليل `test_floorplan.png` المرفق.
+
+إذا ظهرت حالة **OCR غير متاح** في الصفحة، تحقق من أن `tesseract --version` يعمل في Terminal، ثم أوقف التطبيق وشغّله مجددًا. يعرض `GET /health` حالة `ocr_available` لتسهيل فحص بيئة التشغيل.
 
 ## تحليل من سطر الأوامر
 
