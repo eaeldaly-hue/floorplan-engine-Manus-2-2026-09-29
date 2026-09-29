@@ -15,7 +15,12 @@ import numpy as np
 
 from .preprocessing.text_mask import TextMasker
 from .rooms.space_segmentation import SpaceSegmenter
-from .structural.wall_region_detector import WallRegionDetector
+from .walls.mask import WallMaskBuilder
+from .walls.segments import WallSegmentExtractor
+from .walls.room_mask import RoomMaskBuilder
+from .rooms.detect import RoomDetector
+from .opening_detection import detect_openings, draw_openings_overlay
+from .ocr_runtime import configure_tesseract
 
 try:
     import pytesseract
@@ -108,6 +113,7 @@ def configured_ocr_languages() -> str:
     requested = os.environ.get("FLOORPLAN_OCR_LANG", "eng").strip() or "eng"
     if pytesseract is None:
         return ""
+    configure_tesseract()
     try:
         available = set(pytesseract.get_languages(config=""))
     except Exception:
@@ -493,7 +499,11 @@ def _room_box_from_wall_rays(
     return [(left, top), (right, top), (right, bottom), (left, bottom)]
 
 
-def _retry_dimensions_near_label(image: np.ndarray, room: dict[str, Any]) -> dict[str, Any] | None:
+def _retry_dimensions_near_label(
+    image: np.ndarray,
+    room: dict[str, Any],
+    wall_mask: np.ndarray | None = None,
+) -> dict[str, Any] | None:
     if pytesseract is None:
         return None
     line: OCRLine = room["_ocr"]
@@ -503,28 +513,37 @@ def _retry_dimensions_near_label(image: np.ndarray, room: dict[str, Any]) -> dic
     x1 = min(image_width, line.right + margin_x)
     y0 = max(0, line.y - 8)
     y1 = min(image_height, line.bottom + 170)
-    crop = image[y0:y1, x0:x1]
+    crop = image[y0:y1, x0:x1].copy()
     if crop.size == 0:
         return None
+
+    # Thick wall strokes can cover dimension glyphs printed too close to a
+    # wall. Remove only those known wall pixels in this small retry crop;
+    # preserve the original image for the primary OCR pass and the overlay.
+    if wall_mask is not None:
+        wall_crop = wall_mask[y0:y1, x0:x1]
+        crop[wall_crop > 0] = 255
+
     if crop.shape[1] < 900:
         crop = cv2.resize(crop, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+
+    candidates = []
     for psm in (6, 7):
         try:
-            text = pytesseract.image_to_string(
-                crop,
-                config=f"--oem 3 --psm {psm}",
-                lang=configured_ocr_languages(),
-            )
+            lines = _ocr_lines(crop, psm)
         except Exception:
             continue
-        dimensions = _parse_dimensions(text)
-        if dimensions:
+        for ocr_line in lines:
+            dimensions = _parse_dimensions(ocr_line.text)
+            if dimensions is None:
+                continue
             dimensions["text"] = _format_dimensions(dimensions)
-            dimensions["raw_ocr_text"] = " ".join(text.split())
-            dimensions["ocr_confidence"] = 45.0
-            dimensions["source"] = f"local-crop-psm-{psm}"
-            return dimensions
-    return None
+            dimensions["raw_ocr_text"] = " ".join(ocr_line.text.split())
+            dimensions["ocr_confidence"] = round(ocr_line.confidence, 1)
+            dimensions["source"] = f"local-crop-psm-{psm}-wall-masked"
+            candidates.append(dimensions)
+
+    return max(candidates, key=lambda item: item["ocr_confidence"], default=None)
 
 
 def _polygon_bbox(polygon: list[tuple[int, int]]) -> dict[str, int]:
@@ -562,9 +581,13 @@ def _build_room_records(
     dim_candidates = _dimension_candidates(dimensions)
     for room in label_records:
         _associate_dimensions(room, dim_candidates)
-        if not room.get("dimensions"):
-            local_dimensions = _retry_dimensions_near_label(image, room)
-            if local_dimensions:
+        current_dimensions = room.get("dimensions")
+        if not current_dimensions or current_dimensions.get("ocr_confidence", 0) < 65:
+            local_dimensions = _retry_dimensions_near_label(image, room, wall_mask)
+            if local_dimensions and (
+                not current_dimensions
+                or local_dimensions["ocr_confidence"] > current_dimensions.get("ocr_confidence", 0)
+            ):
                 room["dimensions"] = local_dimensions
 
     rooms_by_space = _component_map(label_records, spaces)
@@ -701,6 +724,292 @@ def _build_room_records(
     return room_records, scale, unlabeled
 
 
+def _supplement_anonymous_spaces(
+    image: np.ndarray, spaces: list[dict[str, Any]], unlabeled: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Add enclosed regions found by the independent segment/flood-fill path.
+
+    The primary segmenter is good at recovering irregular regions, while the
+    wall-segment pipeline can close some door gaps the first pass misses. Run
+    this only for unlabeled plans, then discard candidates that substantially
+    overlap an existing region so the two detectors do not double-count rooms.
+    """
+    wall_mask = WallMaskBuilder(image).build()
+    segments = WallSegmentExtractor(wall_mask).detect()
+    room_mask = RoomMaskBuilder(segments, wall_mask.shape, source_image=image).build()
+    detected = RoomDetector(room_mask).detect()
+    height, width = image.shape[:2]
+
+    existing_masks = []
+    for space in spaces:
+        mask = np.zeros((height, width), dtype=np.uint8)
+        cv2.fillPoly(mask, [np.asarray(space["polygon"], dtype=np.int32)], 255)
+        existing_masks.append(mask > 0)
+
+    added = 0
+    for candidate in detected:
+        candidate_mask = np.zeros((height, width), dtype=np.uint8)
+        cv2.fillPoly(candidate_mask, [np.asarray(candidate["polygon"], dtype=np.int32)], 255)
+        candidate_pixels = candidate_mask > 0
+        candidate_area = int(candidate_pixels.sum())
+        if candidate_area == 0:
+            continue
+
+        duplicate = False
+        for existing in existing_masks:
+            intersection = int(np.logical_and(candidate_pixels, existing).sum())
+            smaller_area = min(candidate_area, int(existing.sum()))
+            # Contours from the two pipelines can differ along wall edges, so
+            # compare overlap against the smaller region as well as IoU.
+            union = candidate_area + int(existing.sum()) - intersection
+            if intersection / max(1, smaller_area) >= 0.60 or intersection / max(1, union) >= 0.35:
+                duplicate = True
+                break
+        if duplicate:
+            continue
+
+        added += 1
+        polygon = candidate["polygon"]
+        x, y, box_width, box_height = cv2.boundingRect(np.asarray(polygon, dtype=np.int32))
+        unlabeled.append({
+            "id": f"geometry-space-{added:02d}",
+            "name": "Unlabeled space",
+            "area": {"value": candidate_area, "unit": "px²", "source": "polygon-pixels"},
+            "area_pixels": candidate_area,
+            "boundary": {
+                "polygon": [{"x": int(px), "y": int(py)} for px, py in polygon],
+                "bbox": {"x": int(x), "y": int(y), "width": int(box_width), "height": int(box_height)},
+                "method": "independent-wall-region",
+                "confidence": 0.55,
+                "wall_edges_snapped": 0,
+            },
+        })
+        existing_masks.append(candidate_pixels)
+
+    return unlabeled
+
+
+def _infer_anonymous_dimensions(
+    image: np.ndarray,
+    dimension_lines: list[OCRLine],
+    wall_mask: np.ndarray,
+    unlabeled: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, float] | None, int]:
+    """Use printed measurements as room cues when names are absent.
+
+    Measurements often remain legible even when room names do not. Regions
+    containing one measurement can be calibrated from their pixel area;
+    regions containing several measurements are likely merged and are
+    replaced by separately wall-snapped dimension estimates.
+    """
+    raw = [item for item in _dimension_candidates(dimension_lines) if item["confidence"] >= 72]
+    candidates: list[dict[str, Any]] = []
+    for item in sorted(raw, key=lambda value: value["confidence"], reverse=True):
+        if min(item["width"], item["height"]) < 2.3 or max(item["width"], item["height"]) > 60:
+            continue
+        duplicate = any(
+            old["unit"] == item["unit"]
+            and abs(old["width"] - item["width"]) < 0.15
+            and abs(old["height"] - item["height"]) < 0.15
+            and abs(old["center"][0] - item["center"][0]) <= 110
+            and abs(old["center"][1] - item["center"][1]) <= 75
+            for old in candidates
+        )
+        if not duplicate:
+            candidates.append(item)
+
+    polygons = [
+        [(point["x"], point["y"]) for point in space["boundary"]["polygon"]]
+        for space in unlabeled
+    ]
+    matches: dict[int, list[dict[str, Any]]] = {index: [] for index in range(len(unlabeled))}
+    unmatched = []
+    for item in candidates:
+        containing = [
+            index for index, polygon in enumerate(polygons)
+            if _point_in_polygon(item["center"], polygon)
+        ]
+        if containing:
+            index = min(containing, key=lambda value: unlabeled[value]["area_pixels"])
+            matches[index].append(item)
+        else:
+            unmatched.append(item)
+
+    for index, items in matches.items():
+        box = unlabeled[index]["boundary"]["bbox"]
+        box_aspect = max(box["width"], box["height"]) / max(1, min(box["width"], box["height"]))
+        plausible = []
+        for item in items:
+            dim_aspect = max(item["width"], item["height"]) / min(item["width"], item["height"])
+            if max(box_aspect, dim_aspect) / min(box_aspect, dim_aspect) <= 2.0:
+                plausible.append(item)
+        matches[index] = plausible
+    # A measurement spatially inside a candidate but strongly inconsistent
+    # with its shape is more likely an OCR misread than a usable room cue.
+
+    # OCR can misplace a measurement into a neighboring connected component.
+    # Prefer measurements near the center of their candidate region; this
+    # also prevents one merged polygon from swallowing measurements in a
+    # distant room elsewhere on the page.
+    for index, items in matches.items():
+        if len(items) < 2:
+            continue
+        box = unlabeled[index]["boundary"]["bbox"]
+        center = (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        limit = max(90.0, math.hypot(box["width"], box["height"]) * 0.22)
+        nearby = [
+            item for item in items
+            if math.dist(item["center"], center) <= limit
+        ]
+        if nearby:
+            matches[index] = nearby
+        else:
+            matches[index] = [min(items, key=lambda item: math.dist(item["center"], center))]
+
+    # A consensus window rejects OCR/geometry pairings whose implied scale
+    # differs sharply from the repeated scale supported by other rooms.
+    scale_votes = []
+    for index, items in matches.items():
+        pixel_area = float(unlabeled[index]["area_pixels"])
+        for item in items:
+            scale = math.sqrt(pixel_area / max(item["area"], 0.01))
+            if 20 <= scale <= 120:
+                scale_votes.append((scale, item["unit"]))
+
+    pixel_scale = None
+    if scale_votes:
+        by_unit: dict[str, list[float]] = {}
+        for value, unit in scale_votes:
+            by_unit.setdefault(unit, []).append(value)
+        unit = max(by_unit, key=lambda key: len(by_unit[key]))
+        values = by_unit[unit]
+        clusters = [
+            [value for value in values if abs(value - anchor) / anchor <= 0.18]
+            for anchor in values
+        ]
+        inliers = max(clusters, key=len)
+        if len(inliers) >= 3:
+            pixel_scale = {
+                "unit": unit,
+                "pixels_per_unit": round(float(statistics.median(inliers)), 2),
+                "calibration_rooms": len(inliers),
+            }
+
+    scale_value = pixel_scale["pixels_per_unit"] if pixel_scale else None
+    scale_unit = pixel_scale["unit"] if pixel_scale else None
+    replaced = set()
+    estimates: list[dict[str, Any]] = []
+    kept = list(unlabeled)
+
+    def dimension_record(item: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "width": item["width"], "height": item["height"], "unit": item["unit"],
+            "area": item["area"], "display": item["display"], "text": item["display"],
+            "ocr_confidence": round(item["confidence"], 1),
+            "source": item["source"],
+        }
+
+    def add_estimate(item: dict[str, Any]) -> None:
+        if scale_value is None or item["unit"] != scale_unit:
+            return
+        width_px = item["width"] * scale_value
+        height_px = item["height"] * scale_value
+        polygon, snapped = _snap_rectangle(
+            item["center"], width_px, height_px, wall_mask, scale_value
+        )
+        mask = np.zeros(image.shape[:2], dtype=np.uint8)
+        cv2.fillPoly(mask, [np.asarray(polygon, dtype=np.int32)], 255)
+        pixels = mask > 0
+        area_pixels = int(pixels.sum())
+        if area_pixels == 0:
+            return
+        # Avoid adding a second card when this estimate is already represented
+        # by an existing wall region or another nearby dimension line.
+        for existing in kept + estimates:
+            existing_points = np.asarray(
+                [[point["x"], point["y"]] for point in existing["boundary"]["polygon"]],
+                dtype=np.int32,
+            )
+            existing_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(existing_mask, [existing_points], 255)
+            other = existing_mask > 0
+            overlap = int(np.logical_and(pixels, other).sum())
+            if overlap / max(1, min(area_pixels, int(other.sum()))) >= 0.72:
+                return
+
+        x, y, box_width, box_height = cv2.boundingRect(np.asarray(polygon, dtype=np.int32))
+        estimates.append({
+            "id": f"dimension-space-{len(estimates) + 1:02d}",
+            "name": "Unlabeled space",
+            "dimensions": dimension_record(item),
+            "area": {
+                "value": item["area"],
+                "unit": "ft²" if scale_unit == "ft" else "m²",
+                "source": "printed-dimensions",
+            },
+            "area_pixels": area_pixels,
+            "boundary": {
+                "polygon": [{"x": px, "y": py} for px, py in polygon],
+                "bbox": {"x": x, "y": y, "width": box_width, "height": box_height},
+                "method": "dimension-only-estimate",
+                "confidence": round(min(0.82, 0.46 + 0.09 * snapped), 2),
+                "wall_edges_snapped": snapped,
+            },
+        })
+
+    for index, items in matches.items():
+        if not items:
+            continue
+        if scale_value is None:
+            # Still expose a clear OCR measurement when there is no reliable
+            # calibration for pixel-derived boundaries.
+            selected = max(items, key=lambda value: value["confidence"])
+            unlabeled[index]["dimensions"] = dimension_record(selected)
+            continue
+
+        compatible = [item for item in items if item["unit"] == scale_unit]
+        if not compatible:
+            continue
+        if len(compatible) == 1:
+            item = compatible[0]
+            expected = item["area"] * scale_value * scale_value
+            ratio = unlabeled[index]["area_pixels"] / max(1, expected)
+            if 0.48 <= ratio <= 2.2:
+                unlabeled[index]["dimensions"] = dimension_record(item)
+                unlabeled[index]["area"] = {
+                    "value": item["area"],
+                    "unit": "ft²" if scale_unit == "ft" else "m²",
+                    "source": "printed-dimensions",
+                }
+                continue
+
+        # Several measurement centers inside one connected region indicate
+        # that the wall pass merged rooms; draw separate, explicitly estimated
+        # boxes instead of presenting the merged blob as one room.
+        estimate_count_before = len(estimates)
+        for item in compatible:
+            add_estimate(item)
+        if len(estimates) > estimate_count_before:
+            replaced.add(index)
+        else:
+            # If the snapped box is effectively the same region, retain the
+            # observed wall polygon and report the printed area as a cue.
+            selected = max(compatible, key=lambda value: value["confidence"])
+            unlabeled[index]["dimensions"] = dimension_record(selected)
+            unlabeled[index]["area"] = {
+                "value": selected["area"],
+                "unit": "ft²" if selected["unit"] == "ft" else "m²",
+                "source": "printed-dimensions",
+            }
+
+    for index in sorted(replaced, reverse=True):
+        kept.pop(index)
+    for item in unmatched:
+        add_estimate(item)
+
+    return kept + estimates, pixel_scale, len(estimates)
+
+
 def _draw_overlay(image: np.ndarray, rooms: list[dict[str, Any]], unlabeled: list[dict[str, Any]]) -> bytes:
     base = image.copy()
     fills = base.copy()
@@ -711,9 +1020,10 @@ def _draw_overlay(image: np.ndarray, rooms: list[dict[str, Any]], unlabeled: lis
         points = np.asarray([[point["x"], point["y"]] for point in boundary["polygon"]], dtype=np.int32)
         color = (66, 160, 88) if boundary["method"] == "wall-region" else (0, 166, 245)
         cv2.fillPoly(fills, [points], color)
-    for item in unlabeled:
+    for index, item in enumerate(unlabeled, 1):
         points = np.asarray([[point["x"], point["y"]] for point in item["boundary"]["polygon"]], dtype=np.int32)
-        cv2.fillPoly(fills, [points], (170, 120, 70))
+        color = (0, 166, 245) if item["boundary"]["method"] == "dimension-only-estimate" else (170, 120, 70)
+        cv2.fillPoly(fills, [points], color)
     overlay = cv2.addWeighted(fills, 0.20, base, 0.80, 0)
 
     for room in rooms:
@@ -728,9 +1038,15 @@ def _draw_overlay(image: np.ndarray, rooms: list[dict[str, Any]], unlabeled: lis
         badge_y = min(image.shape[0] - 5, box["y"] + 20)
         cv2.rectangle(overlay, (badge_x - 4, badge_y - 16), (badge_x + 30, badge_y + 4), (255, 255, 255), -1)
         cv2.putText(overlay, room["id"][-2:], (badge_x, badge_y), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (25, 55, 150), 1, cv2.LINE_AA)
-    for item in unlabeled:
+    for index, item in enumerate(unlabeled, 1):
         points = np.asarray([[point["x"], point["y"]] for point in item["boundary"]["polygon"]], dtype=np.int32)
-        cv2.polylines(overlay, [points], True, (170, 120, 70), max(2, image.shape[1] // 900), cv2.LINE_AA)
+        color = (0, 120, 220) if item["boundary"]["method"] == "dimension-only-estimate" else (170, 120, 70)
+        cv2.polylines(overlay, [points], True, color, max(2, image.shape[1] // 900), cv2.LINE_AA)
+        box = item["boundary"]["bbox"]
+        badge_x = min(image.shape[1] - 34, box["x"] + 5)
+        badge_y = min(image.shape[0] - 5, box["y"] + 20)
+        cv2.rectangle(overlay, (badge_x - 4, badge_y - 16), (badge_x + 31, badge_y + 4), (255, 255, 255), -1)
+        cv2.putText(overlay, f"U{index:02d}", (badge_x, badge_y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1, cv2.LINE_AA)
 
     ok, encoded = cv2.imencode(".png", overlay)
     if not ok:
@@ -766,7 +1082,7 @@ class FloorPlanAnalyzer:
         dimension_lines = ocr_primary + ocr_secondary
 
         clean_image, _ = TextMasker(image).remove_text()
-        wall_mask = WallRegionDetector(clean_image).detect()
+        wall_mask = WallMaskBuilder(clean_image).build()
         spaces = SpaceSegmenter(
             clean_image,
             wall_mask=wall_mask,
@@ -782,19 +1098,48 @@ class FloorPlanAnalyzer:
             wall_mask,
             image,
         )
+        supplemental_space_count = 0
+        dimension_estimate_count = 0
+        if not rooms:
+            initial_unlabeled_count = len(unlabeled)
+            unlabeled = _supplement_anonymous_spaces(image, spaces, unlabeled)
+            supplemental_space_count = len(unlabeled) - initial_unlabeled_count
+            unlabeled, anonymous_scale, dimension_estimate_count = _infer_anonymous_dimensions(
+                image, dimension_lines, wall_mask, unlabeled
+            )
+            if scale is None:
+                scale = anonymous_scale
         if not rooms:
             warnings.append("No room labels were identified; geometric regions are shown as unlabeled candidates")
+            if supplemental_space_count:
+                warnings.append(
+                    f"An independent wall-segmentation pass added {supplemental_space_count} additional candidate region(s); review them because open or faint boundaries can merge spaces."
+                )
+            if dimension_estimate_count:
+                warnings.append(
+                    f"Printed dimensions and a scale calibrated from {scale['calibration_rooms']} geometric region(s) produced {dimension_estimate_count} additional estimated room boundary/boundaries. Review these estimates against the walls."
+                )
         if rooms and not any(room.get("dimensions") for room in rooms):
             warnings.append("No room dimensions were parsed; only pixel-based area is available")
         if scale:
+            calibration_source = "geometric regions" if not rooms else "labeled regions"
             warnings.append(
                 f"Pixel scale estimated at {scale['pixels_per_unit']} px/{scale['unit']} from "
-                f"{scale['calibration_rooms']} labeled regions; dimension-derived room areas use the printed plan text."
+                f"{scale['calibration_rooms']} {calibration_source}; dimension-derived room areas use the printed plan text."
             )
         if any(room["boundary"] and room["boundary"]["method"] != "wall-region" for room in rooms):
             warnings.append("Orange boundaries are dimension-based estimates; green boundaries follow extracted wall regions.")
 
+        openings = detect_openings(image, scale)
+        opening_counts = {
+            kind: sum(opening["type"] == kind for opening in openings)
+            for kind in ("door", "window", "opening")
+        }
+        if not openings:
+            warnings.append("No likely door/window wall gaps were detected; inspect image clarity and wall continuity.")
+
         overlay_png = _draw_overlay(image, rooms, unlabeled)
+        openings_overlay_png = draw_openings_overlay(image, openings)
         return {
             "source_name": source_name,
             "image": {"width": width, "height": height},
@@ -803,6 +1148,12 @@ class FloorPlanAnalyzer:
             "pixel_scale": scale,
             "rooms": rooms,
             "unlabeled_spaces": unlabeled,
+            "openings": openings,
+            "opening_count": len(openings),
+            "door_count": opening_counts["door"],
+            "window_count": opening_counts["window"],
+            "unclassified_opening_count": opening_counts["opening"],
             "warnings": warnings,
             "overlay_png": overlay_png,
+            "openings_overlay_png": openings_overlay_png,
         }

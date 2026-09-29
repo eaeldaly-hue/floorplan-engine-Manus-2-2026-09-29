@@ -1,13 +1,10 @@
-.venv/
 __pycache__/
-*.py[cod]
+*.pyc
 .pytest_cache/
-instance/
-output/analysis/
-
-# Generated outputs
+.venv/
+venv/
 output/
-review-output/
-
-# macOS
+output_test/
+instance/
 .DS_Store
+*.egg-info/

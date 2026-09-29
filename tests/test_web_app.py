@@ -49,6 +49,46 @@ def test_corrupt_image_is_rejected(client):
     assert "صورة" in response.json["error"]
 
 
+def test_valid_image_upload_is_decoded_and_only_overlay_is_retained(tmp_path):
+    class StubAnalyzer:
+        def analyze(self, image, source_name):
+            assert image.ndim == 3
+            return {
+                "source_name": source_name,
+                "image": {"width": image.shape[1], "height": image.shape[0]},
+                "room_count": 0,
+                "unlabeled_space_count": 0,
+                "pixel_scale": None,
+                "rooms": [],
+                "unlabeled_spaces": [],
+                "warnings": [],
+                "overlay_png": b"\x89PNG\r\n\x1a\n",
+            }
+
+    app = create_app({
+        "TESTING": True,
+        "UPLOAD_FOLDER": str(tmp_path / "results"),
+        "ANALYZER": StubAnalyzer(),
+    })
+    client = app.test_client()
+    payload = (PROJECT_ROOT / "test_floorplan.png").read_bytes()
+    response = client.post(
+        "/api/analyze",
+        data={"file": (BytesIO(payload), "plan.png")},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 200, response.get_data(as_text=True)
+    data = response.json
+    assert data["source_name"] == "plan.png"
+    assert data["image"]["width"] >= 100
+    overlay = client.get(data["overlay_url"])
+    assert overlay.status_code == 200
+    assert overlay.data.startswith(b"\x89PNG\r\n\x1a\n")
+    result_dir = Path(app.config["UPLOAD_FOLDER"]) / data["result_id"]
+    assert sorted(path.name for path in result_dir.iterdir()) == ["rooms-overlay.png"]
+
+
 def test_pdf_decoder_uses_first_page_and_reports_multipage_file():
     writer = PdfWriter()
     writer.add_blank_page(width=72, height=72)

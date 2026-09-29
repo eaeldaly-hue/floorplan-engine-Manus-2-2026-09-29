@@ -76,6 +76,8 @@
   function renderBoundary(boundary) {
     if (!boundary) return { label: 'لم تُرسم حدود موثوقة', confidence: 'غير متاح' };
     const source = boundary.method === 'wall-region' ? 'حدود من الجدران' :
+      boundary.method === 'independent-wall-region' ? 'حدود من كاشف جدران إضافي' :
+      boundary.method === 'dimension-only-estimate' ? 'حدود تقديرية من الأبعاد المطبوعة' :
       boundary.method === 'wall-ray-estimate' ? 'تقدير من امتداد الجدران' : 'مستنتجة من الأبعاد';
     return { label: source, confidence: `${Math.round((boundary.confidence || 0) * 100)}%` };
   }
@@ -165,6 +167,43 @@
       data.unlabeled_spaces.forEach((room, index) => unlabeledList.append(roomCard(room, index, true)));
     } else {
       unlabeledPanel.hidden = true;
+    }
+
+    const openingsPanel = document.getElementById('openings-panel');
+    const openingList = document.getElementById('opening-list');
+    const openingSummary = document.getElementById('opening-summary');
+    openingList.replaceChildren();
+    openingSummary.replaceChildren();
+    const openings = data.openings || [];
+    openingsPanel.hidden = openings.length === 0;
+    if (openings.length) {
+      [
+        ['أبواب محتملة', data.door_count || 0, 'door'],
+        ['شبابيك محتملة', data.window_count || 0, 'window'],
+        ['فتحات للمراجعة', data.unclassified_opening_count || 0, 'opening'],
+      ].forEach(([label, count, kind]) => {
+        const badge = el('div', `opening-count ${kind}`);
+        badge.append(el('span', '', label), el('strong', '', String(count)));
+        openingSummary.append(badge);
+      });
+
+      const openingImage = document.getElementById('openings-overlay-image');
+      openingImage.src = `${data.openings_overlay_url}?v=${Date.now()}`;
+      document.getElementById('download-openings-overlay').href = openingImage.src;
+
+      openings.forEach((opening) => {
+        const card = el('article', `opening-card ${opening.type}`);
+        const header = el('div', 'opening-card-head');
+        header.append(
+          el('h4', '', `${opening.id} · ${opening.type_label}`),
+          el('strong', '', `${Math.round((opening.confidence || 0) * 100)}%`),
+        );
+        card.append(header);
+        const size = opening.width_display || `${opening.width_pixels} px`;
+        card.append(el('p', '', `العرض التقريبي ${size} · ${opening.orientation === 'horizontal' ? 'أفقي' : 'رأسي'}`));
+        card.append(el('p', 'opening-reason', opening.evidence?.reason || 'لم تتوفر تفاصيل إضافية.'));
+        openingList.append(card);
+      });
     }
     results.hidden = false;
     results.scrollIntoView({ behavior: 'smooth', block: 'start' });

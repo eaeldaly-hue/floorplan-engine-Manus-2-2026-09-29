@@ -1,0 +1,197 @@
+[
+  {
+    "number": 1,
+    "opening_id": "opening_1",
+    "wall_id": "wall_2",
+    "width": 145.0,
+    "wall_thickness": 39.0,
+    "bbox": [
+      1315,
+      8,
+      1616,
+      164
+    ],
+    "dark_pixel_ratio": 0.1462,
+    "edge_density": 0.0283
+  },
+  {
+    "number": 2,
+    "opening_id": "opening_2",
+    "wall_id": "wall_2",
+    "width": 267.0,
+    "wall_thickness": 39.0,
+    "bbox": [
+      1837,
+      8,
+      2260,
+      164
+    ],
+    "dark_pixel_ratio": 0.0926,
+    "edge_density": 0.0138
+  },
+  {
+    "number": 3,
+    "opening_id": "opening_3",
+    "wall_id": "wall_6",
+    "width": 115.0,
+    "wall_thickness": 24.0,
+    "bbox": [
+      2028,
+      768,
+      2239,
+      864
+    ],
+    "dark_pixel_ratio": 0.1313,
+    "edge_density": 0.0282
+  },
+  {
+    "number": 4,
+    "opening_id": "opening_4",
+    "wall_id": "wall_13",
+    "width": 131.0,
+    "wall_thickness": 23.0,
+    "bbox": [
+      822,
+      1270,
+      1045,
+      1362
+    ],
+    "dark_pixel_ratio": 0.174,
+    "edge_density": 0.0467
+  },
+  {
+    "number": 5,
+    "opening_id": "opening_5",
+    "wall_id": "wall_15",
+    "width": 124.0,
+    "wall_thickness": 23.0,
+    "bbox": [
+      332,
+      1409,
+      548,
+      1501
+    ],
+    "dark_pixel_ratio": 0.1823,
+    "edge_density": 0.0409
+  },
+  {
+    "number": 6,
+    "opening_id": "opening_6",
+    "wall_id": "wall_15",
+    "width": 164.0,
+    "wall_thickness": 23.0,
+    "bbox": [
+      556,
+      1419,
+      812,
+      1511
+    ],
+    "dark_pixel_ratio": 0.1548,
+    "edge_density": 0.0279
+  },
+  {
+    "number": 7,
+    "opening_id": "opening_7",
+    "wall_id": "wall_17",
+    "width": 145.0,
+    "wall_thickness": 39.0,
+    "bbox": [
+      791,
+      1864,
+      1092,
+      2020
+    ],
+    "dark_pixel_ratio": 0.1459,
+    "edge_density": 0.0282
+  },
+  {
+    "number": 8,
+    "opening_id": "opening_8",
+    "wall_id": "wall_18",
+    "width": 145.0,
+    "wall_thickness": 39.0,
+    "bbox": [
+      303,
+      2026,
+      604,
+      2182
+    ],
+    "dark_pixel_ratio": 0.1483,
+    "edge_density": 0.0283
+  },
+  {
+    "number": 9,
+    "opening_id": "opening_9",
+    "wall_id": "wall_22",
+    "width": 144.0,
+    "wall_thickness": 41.0,
+    "bbox": [
+      74,
+      1044,
+      238,
+      1352
+    ],
+    "dark_pixel_ratio": 0.1444,
+    "edge_density": 0.0266
+  },
+  {
+    "number": 10,
+    "opening_id": "opening_10",
+    "wall_id": "wall_23",
+    "width": 145.0,
+    "wall_thickness": 39.0,
+    "bbox": [
+      81,
+      138,
+      237,
+      439
+    ],
+    "dark_pixel_ratio": 0.194,
+    "edge_density": 0.0294
+  },
+  {
+    "number": 11,
+    "opening_id": "opening_11",
+    "wall_id": "wall_25",
+    "width": 201.0,
+    "wall_thickness": 31.0,
+    "bbox": [
+      640,
+      1287,
+      764,
+      1612
+    ],
+    "dark_pixel_ratio": 0.1566,
+    "edge_density": 0.027
+  },
+  {
+    "number": 12,
+    "opening_id": "opening_12",
+    "wall_id": "wall_26",
+    "width": 117.0,
+    "wall_thickness": 18.0,
+    "bbox": [
+      743,
+      1152,
+      815,
+      1341
+    ],
+    "dark_pixel_ratio": 0.215,
+    "edge_density": 0.0185
+  },
+  {
+    "number": 13,
+    "opening_id": "opening_13",
+    "wall_id": "wall_30",
+    "width": 133.0,
+    "wall_thickness": 31.0,
+    "bbox": [
+      1320,
+      801,
+      1444,
+      1058
+    ],
+    "dark_pixel_ratio": 0.1677,
+    "edge_density": 0.0141
+  }
+]

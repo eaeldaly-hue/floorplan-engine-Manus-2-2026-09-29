@@ -14,6 +14,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from engine.analyzer import FloorPlanAnalyzer
+from engine.ocr_runtime import tesseract_status
 
 logger = logging.getLogger(__name__)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp", "tif", "tiff", "pdf"}
@@ -99,9 +100,11 @@ def create_app(test_config: dict | None = None) -> Flask:
         result_dir = result_root / result_id
         result_dir.mkdir(parents=True, exist_ok=False)
         (result_dir / "rooms-overlay.png").write_bytes(result.pop("overlay_png"))
+        (result_dir / "openings-overlay.png").write_bytes(result.pop("openings_overlay_png"))
         result["warnings"] = load_warnings + result["warnings"]
         result["result_id"] = result_id
         result["overlay_url"] = f"/api/results/{result_id}/overlay.png"
+        result["openings_overlay_url"] = f"/api/results/{result_id}/openings.png"
         _trim_old_results(result_root, keep=30)
         return jsonify(result)
 
@@ -111,13 +114,8 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get("/health")
     def health():
-        try:
-            import pytesseract
-            pytesseract.get_tesseract_version()
-            ocr_ready = True
-        except Exception:
-            ocr_ready = False
-        return jsonify({"status": "ok", "ocr_available": ocr_ready})
+        ocr_ready, ocr_error = tesseract_status()
+        return jsonify({"status": "ok", "ocr_available": ocr_ready, "ocr_error": ocr_error})
 
     @app.post("/api/analyze")
     def analyze_upload():
@@ -147,6 +145,15 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not (directory / "rooms-overlay.png").is_file():
             return jsonify({"error": "انتهت صلاحية النتيجة أو لم تعد موجودة."}), 404
         return send_from_directory(directory, "rooms-overlay.png", mimetype="image/png", max_age=0)
+
+    @app.get("/api/results/<result_id>/openings.png")
+    def get_openings_overlay(result_id: str):
+        if len(result_id) != 32 or any(ch not in "0123456789abcdef" for ch in result_id):
+            return jsonify({"error": "النتيجة غير موجودة."}), 404
+        directory = result_root / result_id
+        if not (directory / "openings-overlay.png").is_file():
+            return jsonify({"error": "انتهت صلاحية النتيجة أو لم تعد موجودة."}), 404
+        return send_from_directory(directory, "openings-overlay.png", mimetype="image/png", max_age=0)
 
     @app.errorhandler(RequestEntityTooLarge)
     def too_large(_error):
