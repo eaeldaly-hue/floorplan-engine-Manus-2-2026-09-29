@@ -98,6 +98,36 @@ def _door_swing_score(
     return float(best)
 
 
+def _normal_wall_clearance(
+    wall_mask: np.ndarray,
+    opening: Any,
+    direction: int,
+    limit_px: float,
+) -> float | None:
+    """Return distance to a wall that blocks the passage beyond an opening."""
+    cx = (opening.start[0] + opening.end[0]) / 2.0
+    cy = (opening.start[1] + opening.end[1]) / 2.0
+    half_span = max(6, int(round(opening.width * 0.30)))
+    half_band = max(2, int(round(opening.wall_thickness * 0.22)))
+    step = max(2, int(round(opening.wall_thickness / 3.0)))
+    first_distance = max(4, int(round(opening.wall_thickness * 0.65)))
+
+    for distance in range(first_distance, int(limit_px) + 1, step):
+        if opening.orientation == "horizontal":
+            axis = int(round(cy + direction * distance))
+            lo = max(0, int(round(cx - half_span)))
+            hi = min(wall_mask.shape[1], int(round(cx + half_span + 1)))
+            band = wall_mask[max(0, axis - half_band):min(wall_mask.shape[0], axis + half_band + 1), lo:hi]
+        else:
+            axis = int(round(cx + direction * distance))
+            lo = max(0, int(round(cy - half_span)))
+            hi = min(wall_mask.shape[0], int(round(cy + half_span + 1)))
+            band = wall_mask[lo:hi, max(0, axis - half_band):min(wall_mask.shape[1], axis + half_band + 1)]
+        if band.size and float(np.mean(band > 0)) >= 0.35:
+            return float(distance)
+    return None
+
+
 def _deduplicate(candidates: list[Any]) -> list[Any]:
     """Remove long gap candidates that duplicate shorter nearby gaps."""
     kept = []
@@ -146,6 +176,14 @@ def detect_openings(image: np.ndarray, pixel_scale: dict[str, Any] | None = None
     edge_distance = cv2.distanceTransform(255 - edges, cv2.DIST_L2, 3)
     wall_points = np.column_stack(np.where(wall_mask > 0))[:, ::-1].astype(np.int32)
     hull = cv2.convexHull(wall_points) if len(wall_points) >= 3 else None
+    if hull is not None:
+        moments = cv2.moments(hull)
+        footprint_center = (
+            moments["m10"] / moments["m00"],
+            moments["m01"] / moments["m00"],
+        ) if moments["m00"] else (width / 2.0, height / 2.0)
+    else:
+        footprint_center = (width / 2.0, height / 2.0)
 
     openings = []
     for candidate in candidates:
@@ -161,6 +199,31 @@ def detect_openings(image: np.ndarray, pixel_scale: dict[str, Any] | None = None
         swing_score = _door_swing_score(edge_distance, candidate)
         thickness = max(1.0, float(candidate.wall_thickness))
         near_outer_wall = hull_distance <= max(2.4 * thickness, diagonal * 0.035)
+
+        # A real doorway needs usable space immediately beyond the threshold.
+        # For an exterior window, only inspect the plan interior; for an interior
+        # opening, inspect both sides of the wall.
+        clearance_limit = max(3.0 * thickness, 0.45 * candidate.width)
+        if candidate.orientation == "horizontal":
+            inward_direction = 1 if footprint_center[1] >= center[1] else -1
+        else:
+            inward_direction = 1 if footprint_center[0] >= center[0] else -1
+        directions = [inward_direction] if near_outer_wall else [-1, 1]
+        clearance_distances = [
+            _normal_wall_clearance(wall_mask, candidate, direction, clearance_limit)
+            for direction in directions
+        ]
+        blocked_by_near_wall = any(
+            distance is not None and distance < clearance_limit
+            for distance in clearance_distances
+        )
+
+        # An exterior gap without a visible frame is usually a broken wall line,
+        # image clipping, or an entrance to an exterior recess—not a window.
+        if near_outer_wall and (frame_count < 2 or frame_regularity < 0.35):
+            continue
+        if blocked_by_near_wall:
+            continue
 
         if frame_count >= 2 and frame_regularity >= 0.35 and (
             near_outer_wall or frame_count >= 3 or frame_regularity >= 0.75
@@ -207,6 +270,10 @@ def detect_openings(image: np.ndarray, pixel_scale: dict[str, Any] | None = None
                 "frame_regularity": round(frame_regularity, 2),
                 "door_swing_score": round(swing_score, 2),
                 "distance_to_outer_footprint_px": round(float(hull_distance), 1),
+                "nearby_wall_clearance_px": [
+                    round(float(distance), 1) if distance is not None else None
+                    for distance in clearance_distances
+                ],
                 "reason": reason,
             },
         }
