@@ -3,7 +3,13 @@ from pathlib import Path
 import cv2
 import pytest
 
-from engine.analyzer import FloorPlanAnalyzer, _parse_dimensions, _room_name
+from engine.analyzer import (
+    FloorPlanAnalyzer,
+    OCRLine,
+    _assign_dimensions,
+    _parse_dimensions,
+    _room_name,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_PATH = PROJECT_ROOT / "test_floorplan.png"
@@ -30,6 +36,33 @@ def test_dimension_parser_handles_common_units_and_rejects_partial_ocr():
     assert arabic_metric["area"] == pytest.approx(14.0)
     assert _room_name("غرفة المعيشة") == "غرفة معيشة"
     assert _room_name("مطبخ") == "مطبخ"
+    assert _room_name("مرآب") == "مرآب"
+    assert _room_name("غُرْفَة النوم الرئيسية") == "غرفة نوم رئيسية"
+
+
+def test_a_dimension_candidate_is_not_reused_by_two_room_labels():
+    rooms = [
+        {"_ocr": OCRLine("ROOM A", 0, 0, 40, 20, 90, "test")},
+        {"_ocr": OCRLine("ROOM B", 80, 0, 40, 20, 90, "test")},
+    ]
+    dimensions = [
+        {
+            "width": 10.0,
+            "height": 12.0,
+            "unit": "ft",
+            "area": 120.0,
+            "text": "10' x 12'",
+            "display": "10'0\" × 12'0\"",
+            "box": (35, 30, 20, 12),
+            "center": (45, 36),
+            "confidence": 90.0,
+        }
+    ]
+
+    _assign_dimensions(rooms, dimensions)
+
+    assert rooms[0]["dimensions"]["area"] == 120.0
+    assert "dimensions" not in rooms[1]
 
 
 def test_bundled_floor_plan_returns_room_records_and_in_image_boundaries():

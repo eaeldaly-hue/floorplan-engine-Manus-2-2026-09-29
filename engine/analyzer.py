@@ -289,41 +289,62 @@ def _dimension_candidates(lines: list[OCRLine]) -> list[dict[str, Any]]:
     return candidates
 
 
-def _room_name(text: str) -> str | None:
+def _normalize_room_text(text: str) -> str:
     normalized = re.sub(r"ـ|[\u064b-\u065f\u0670]", "", text.upper())
     normalized = normalized.replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").replace("ٱ", "ا").replace("ى", "ي")
     normalized = re.sub(r"[^A-Z0-9\s\u0600-\u06ff]", " ", normalized)
-    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _room_name(text: str) -> str | None:
+    normalized = _normalize_room_text(text)
     for display, term in ROOM_TERMS:
-        if re.search(rf"(?<![A-Z\u0600-\u06ff]){re.escape(term)}(?![A-Z\u0600-\u06ff])", normalized):
+        normalized_term = _normalize_room_text(term)
+        if re.search(rf"(?<![A-Z\u0600-\u06ff]){re.escape(normalized_term)}(?![A-Z\u0600-\u06ff])", normalized):
             return display
     return None
 
 
-def _associate_dimensions(room: dict[str, Any], dimensions: list[dict[str, Any]]) -> None:
+def _dimension_match_score(room: dict[str, Any], item: dict[str, Any]) -> float | None:
     room_line: OCRLine = room["_ocr"]
     room_cx, _ = room_line.center
-    eligible = []
-    for index, item in enumerate(dimensions):
-        x, y, width, height = item["box"]
-        dy = y - room_line.bottom
-        dx = abs(item["center"][0] - room_cx)
-        overlap = max(0, min(room_line.right, x + width) - max(room_line.x, x))
-        if dy < -8 or dy > 155:
+    x, y, width, height = item["box"]
+    dy = y - room_line.bottom
+    dx = abs(item["center"][0] - room_cx)
+    overlap = max(0, min(room_line.right, x + width) - max(room_line.x, x))
+    if dy < -8 or dy > 155:
+        return None
+    if dx > max(210, room_line.width * 1.4) and overlap == 0:
+        return None
+    score = dy / 120 + dx / max(120, room_line.width) * 0.45
+    score += 0.2 * (1 - overlap / max(1, min(width, room_line.width)))
+    score += max(0, 75 - item["confidence"]) / 250
+    return score
+
+
+def _assign_dimensions(rooms: list[dict[str, Any]], dimensions: list[dict[str, Any]]) -> None:
+    """Assign OCR dimensions one-to-one using the best eligible room matches."""
+    matches = []
+    for room_index, room in enumerate(rooms):
+        for dimension_index, item in enumerate(dimensions):
+            score = _dimension_match_score(room, item)
+            if score is not None:
+                matches.append((score, room_index, dimension_index))
+
+    assigned_rooms: set[int] = set()
+    assigned_dimensions: set[int] = set()
+    for _, room_index, dimension_index in sorted(matches):
+        if room_index in assigned_rooms or dimension_index in assigned_dimensions:
             continue
-        if dx > max(210, room_line.width * 1.4) and overlap == 0:
-            continue
-        score = dy / 120 + dx / max(120, room_line.width) * 0.45
-        score += 0.2 * (1 - overlap / max(1, min(width, room_line.width)))
-        score += max(0, 75 - item["confidence"]) / 250
-        eligible.append((score, index, item))
-    if eligible:
-        _, index, item = min(eligible, key=lambda match: match[0])
+        room = rooms[room_index]
+        item = dimensions[dimension_index]
         room["dimensions"] = {key: item[key] for key in ("width", "height", "unit", "area")}
         room["dimensions"]["text"] = item["display"]
         room["dimensions"]["raw_ocr_text"] = item["text"]
         room["dimensions"]["ocr_confidence"] = round(item["confidence"], 1)
-        room["_dimension_index"] = index
+        room["_dimension_index"] = dimension_index
+        assigned_rooms.add(room_index)
+        assigned_dimensions.add(dimension_index)
 
 
 def _point_in_polygon(point: tuple[int, int], polygon: list[tuple[int, int]]) -> bool:
@@ -560,8 +581,8 @@ def _build_room_records(
     # both segmentation modes because tightly packed dimension glyphs often
     # benefit from the alternate layout hypothesis.
     dim_candidates = _dimension_candidates(dimensions)
+    _assign_dimensions(label_records, dim_candidates)
     for room in label_records:
-        _associate_dimensions(room, dim_candidates)
         if not room.get("dimensions"):
             local_dimensions = _retry_dimensions_near_label(image, room)
             if local_dimensions:
