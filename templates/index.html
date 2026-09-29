@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8fa">
+  <title>قارئ المخططات — تحليل الغرف</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="الصفحة الرئيسية">
+        <span class="brand-mark" aria-hidden="true">⌂</span>
+        <span>مِساحة <small>قارئ المخططات</small></span>
+      </a>
+      <div class="status" id="health-status"><span class="status-dot"></span><span>جاري فحص محرك التحليل…</span></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="intro">
+      <div class="eyebrow">تحليل هندسي للمخططات</div>
+      <h1>من المخطط إلى تفاصيل كل غرفة</h1>
+      <p>ارفع صورة أو ملف PDF. يستخرج النظام أسماء الغرف وأبعادها، ويحدد حدودًا مرئية لكل غرفة، ثم يعرض المساحة المطبوعة أو تقديرًا واضح المصدر.</p>
+    </section>
+
+    <section class="upload-panel panel" aria-labelledby="upload-title">
+      <div class="section-heading">
+        <div><span class="step">01</span><h2 id="upload-title">ارفع مخطط الطابق</h2></div>
+        <span class="file-hint">PNG · JPG · TIFF · PDF — حتى 20 MB</span>
+      </div>
+      <form id="upload-form">
+        <label class="dropzone" id="dropzone" for="plan-file">
+          <input id="plan-file" name="file" type="file" accept="image/png,image/jpeg,image/tiff,image/bmp,application/pdf,.tif,.tiff">
+          <span class="upload-icon" aria-hidden="true">↑</span>
+          <strong id="file-title">اسحب الملف هنا أو اختره من جهازك</strong>
+          <span id="file-subtitle">يفضّل مخططًا واضحًا ومستقيمًا مع ظهور النص والأبعاد</span>
+          <span class="file-name" id="file-name"></span>
+        </label>
+        <div class="form-actions">
+          <span class="privacy-note">تُعالج الصورة على خادم التطبيق ولا تُحفَظ النسخة الأصلية.</span>
+          <button class="secondary-button" id="sample-button" type="button">جرّب على المخطط التجريبي</button>
+          <button class="primary-button" id="analyze-button" type="submit" disabled>حلّل المخطط <span aria-hidden="true">←</span></button>
+        </div>
+      </form>
+      <div class="error-box" id="error-box" role="alert" hidden></div>
+      <div class="progress-box" id="progress-box" hidden><span class="spinner"></span><span>نقرأ النصوص ونستخرج حدود الغرف… قد يستغرق ذلك لحظات.</span></div>
+    </section>
+
+    <section class="results" id="results" hidden aria-live="polite">
+      <div class="results-heading">
+        <div><span class="step">02</span><h2>نتيجة التحليل</h2><p class="source-name" id="source-name"></p></div>
+        <button class="secondary-button" id="new-analysis" type="button">تحليل مخطط آخر</button>
+      </div>
+
+      <div class="summary-grid" id="summary-grid"></div>
+
+      <div class="result-layout">
+        <section class="panel overlay-panel">
+          <div class="panel-title"><div><h3>حدود الغرف على المخطط</h3><p>الأخضر: منطقة جدران مكتشفة · البرتقالي: حدود مستنتجة من الأبعاد</p></div><div class="result-downloads"><a id="download-overlay" class="text-link" download="floorplan-rooms.png">تنزيل المعاينة</a><a id="download-json" class="text-link" download="floorplan-analysis.json">تنزيل بيانات الغرف JSON</a></div></div>
+          <div class="overlay-frame"><img id="overlay-image" alt="مخطط الطابق مع حدود الغرف المكتشفة"></div>
+          <div class="warnings" id="warnings" hidden></div>
+        </section>
+        <section class="panel room-panel">
+          <div class="panel-title room-title"><div><h3>الغرف المستخرجة</h3><p id="rooms-subtitle"></p></div><span class="count-badge" id="room-count"></span></div>
+          <div class="room-list" id="room-list"></div>
+        </section>
+      </div>
+      <section class="panel unlabeled-panel" id="unlabeled-panel" hidden>
+        <div class="panel-title"><div><h3>مناطق لم يُقرأ اسمها</h3><p>مناطق محاطة بجدران لكن لم يرتبط بها نص غرفة واضح.</p></div></div>
+        <div class="room-list" id="unlabeled-list"></div>
+      </section>
+      <p class="disclaimer">المساحة الفيزيائية مأخوذة من الأبعاد المطبوعة في المخطط. إذا لم يتوفر بُعد، قد يظهر تقدير من مقياس الصورة؛ راجع طريقة الحد والثقة قبل استخدام النتائج في مخططات تنفيذية.</p>
+    </section>
+
+    <footer>محرك تحليل محلي · لا يُغني عن مراجعة مهندس للمخطط قبل التنفيذ أو التسعير.</footer>
+  </main>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
