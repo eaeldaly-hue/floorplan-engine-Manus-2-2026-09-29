@@ -10,6 +10,7 @@ import numpy as np
 
 from engine.geometry_v2.local_opening_analyzer import LocalOpeningAnalyzer
 from engine.geometry_v2.segments import WallSegmentBuilder
+from engine.opening_symbol_model import classify_opening_symbol
 from engine.walls.mask import WallMaskBuilder
 from engine.walls.segments import WallSegmentExtractor
 
@@ -26,6 +27,10 @@ def _opening_frame_marks(
     opening: Any,
 ) -> tuple[int, float]:
     """Count repeated parallel frame rails inside the wall thickness."""
+    if opening.orientation == "diagonal":
+        # Frame scoring for oblique walls is deferred; topology still
+        # classifies exterior gaps and interior doors without this cue.
+        return 0, 0.0
     x1, y1 = opening.start
     x2, y2 = opening.end
     half_band = max(5, int(round(opening.wall_thickness * 1.35)))
@@ -70,24 +75,23 @@ def _door_swing_score(
     edge_distance: np.ndarray,
     opening: Any,
 ) -> float:
-    """Look for a quarter-circle door swing near either gap endpoint."""
+    """Measure wall-adjacent quarter-circle evidence at the exact gap width."""
     best = 0.0
     radius = float(opening.width)
-    if radius < 35:
+    if radius < 16:
         return best
+    tx = (opening.end[0] - opening.start[0]) / max(1.0, radius)
+    ty = (opening.end[1] - opening.start[1]) / max(1.0, radius)
+    nx, ny = -ty, tx
     for endpoint_index, endpoint in enumerate((opening.start, opening.end)):
         hx, hy = endpoint
         direction = 1 if endpoint_index == 0 else -1
         for side in (-1, 1):
             supported = 0
             total = 0
-            for theta in np.linspace(0.18, math.pi / 2 - 0.18, 40):
-                if opening.orientation == "horizontal":
-                    x = hx + direction * radius * math.cos(theta)
-                    y = hy + side * radius * math.sin(theta)
-                else:
-                    y = hy + direction * radius * math.cos(theta)
-                    x = hx + side * radius * math.sin(theta)
+            for theta in np.linspace(0.18, math.pi / 2 - 0.18, 48):
+                x = hx + direction * radius * math.cos(theta) * tx + side * radius * math.sin(theta) * nx
+                y = hy + direction * radius * math.cos(theta) * ty + side * radius * math.sin(theta) * ny
                 ix, iy = int(round(x)), int(round(y))
                 if 0 <= ix < edge_distance.shape[1] and 0 <= iy < edge_distance.shape[0]:
                     total += 1
@@ -111,27 +115,80 @@ def _normal_wall_clearance(
     half_band = max(2, int(round(opening.wall_thickness * 0.22)))
     step = max(2, int(round(opening.wall_thickness / 3.0)))
     first_distance = max(4, int(round(opening.wall_thickness * 0.65)))
+    tx = (opening.end[0] - opening.start[0]) / max(1.0, opening.width)
+    ty = (opening.end[1] - opening.start[1]) / max(1.0, opening.width)
+    nx, ny = -ty, tx
 
     for distance in range(first_distance, int(limit_px) + 1, step):
-        if opening.orientation == "horizontal":
-            axis = int(round(cy + direction * distance))
-            lo = max(0, int(round(cx - half_span)))
-            hi = min(wall_mask.shape[1], int(round(cx + half_span + 1)))
-            band = wall_mask[max(0, axis - half_band):min(wall_mask.shape[0], axis + half_band + 1), lo:hi]
-        else:
-            axis = int(round(cx + direction * distance))
-            lo = max(0, int(round(cy - half_span)))
-            hi = min(wall_mask.shape[0], int(round(cy + half_span + 1)))
-            band = wall_mask[lo:hi, max(0, axis - half_band):min(wall_mask.shape[1], axis + half_band + 1)]
-        if band.size and float(np.mean(band > 0)) >= 0.35:
+        points = []
+        for along in np.linspace(-half_span, half_span, max(3, half_span * 2 + 1)):
+            for across in range(-half_band, half_band + 1):
+                x = int(round(cx + tx * along + nx * (direction * distance + across)))
+                y = int(round(cy + ty * along + ny * (direction * distance + across)))
+                if 0 <= x < wall_mask.shape[1] and 0 <= y < wall_mask.shape[0]:
+                    points.append(wall_mask[y, x] > 0)
+        band_occupancy = float(np.mean(points)) if points else 0.0
+        if points and band_occupancy >= 0.35:
             return float(distance)
     return None
+
+
+def _room_side_relation(spaces: list[dict[str, Any]], opening: Any) -> tuple[str, list[str]]:
+    """Determine whether a gap separates two enclosed spaces or a space and outdoors."""
+    cx = (opening.start[0] + opening.end[0]) / 2.0
+    cy = (opening.start[1] + opening.end[1]) / 2.0
+    tx = (opening.end[0] - opening.start[0]) / max(1.0, opening.width)
+    ty = (opening.end[1] - opening.start[1]) / max(1.0, opening.width)
+    nx, ny = -ty, tx
+    base = max(3.0, float(opening.wall_thickness) * 1.25)
+    sides: list[str | None] = [None, None]
+    for side_index, direction in enumerate((-1.0, 1.0)):
+        for multiplier in (1.0, 1.6, 2.3, 3.2):
+            point = (float(cx + nx * direction * base * multiplier), float(cy + ny * direction * base * multiplier))
+            for space in spaces:
+                polygon = np.asarray(space.get("polygon", []), dtype=np.float32)
+                if len(polygon) >= 3 and cv2.pointPolygonTest(polygon, point, False) >= 0:
+                    sides[side_index] = str(space.get("id", "space"))
+                    break
+            if sides[side_index] is not None:
+                break
+
+    found = [value for value in sides if value is not None]
+    if len(found) == 2 and found[0] != found[1]:
+        return "between_rooms", found
+    if len(found) == 1:
+        return "room_to_exterior", found
+    if len(found) == 2:
+        return "same_room", found
+    return "unknown", found
 
 
 def _deduplicate(candidates: list[Any]) -> list[Any]:
     """Remove long gap candidates that duplicate shorter nearby gaps."""
     kept = []
     for candidate in sorted(candidates, key=lambda item: (item.confidence, -item.width), reverse=True):
+        if candidate.orientation == "diagonal":
+            tx = (candidate.end[0] - candidate.start[0]) / max(1.0, candidate.width)
+            ty = (candidate.end[1] - candidate.start[1]) / max(1.0, candidate.width)
+            nx, ny = -ty, tx
+            c_center = ((candidate.start[0] + candidate.end[0]) / 2, (candidate.start[1] + candidate.end[1]) / 2)
+            duplicate = False
+            for existing in kept:
+                if existing.orientation != "diagonal":
+                    continue
+                etx = (existing.end[0] - existing.start[0]) / max(1.0, existing.width)
+                ety = (existing.end[1] - existing.start[1]) / max(1.0, existing.width)
+                if abs(tx * etx + ty * ety) < 0.97:
+                    continue
+                e_center = ((existing.start[0] + existing.end[0]) / 2, (existing.start[1] + existing.end[1]) / 2)
+                normal_delta = abs((e_center[0] - c_center[0]) * nx + (e_center[1] - c_center[1]) * ny)
+                tangent_delta = abs((e_center[0] - c_center[0]) * tx + (e_center[1] - c_center[1]) * ty)
+                if normal_delta <= max(candidate.wall_thickness, existing.wall_thickness, 8) and tangent_delta < min(candidate.width, existing.width) * 0.35:
+                    duplicate = True
+                    break
+            if not duplicate:
+                kept.append(candidate)
+            continue
         a1, a2 = (candidate.start[0], candidate.end[0]) if candidate.orientation == "horizontal" else (candidate.start[1], candidate.end[1])
         low, high = sorted((a1, a2))
         axis = (candidate.start[1] + candidate.end[1]) / 2 if candidate.orientation == "horizontal" else (candidate.start[0] + candidate.end[0]) / 2
@@ -152,14 +209,25 @@ def _deduplicate(candidates: list[Any]) -> list[Any]:
     return kept
 
 
-def detect_openings(image: np.ndarray, pixel_scale: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def detect_openings(
+    image: np.ndarray,
+    pixel_scale: dict[str, Any] | None = None,
+    spaces: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     """Return plausible opening locations, rough types, and visible evidence."""
     height, width = image.shape[:2]
+    # A single extracted polygon does not mean usable room topology. In that
+    # failure mode, keep geometrically valid openings for symbol-based review
+    # instead of silently discarding every unknown relation.
+    topology_available = spaces is not None and len(spaces) >= 2
     diagonal = math.hypot(width, height)
     wall_mask = WallMaskBuilder(image).build()
-    raw_segments = WallSegmentExtractor(wall_mask).detect()
+    raw_segments = WallSegmentExtractor(wall_mask).detect(include_diagonal=True)
     segments = WallSegmentBuilder().build_many(raw_segments)
-    minimum_gap = max(30, int(round(diagonal * 0.018)))
+    # Scale the initial candidate floor with the image rather than dropping
+    # ordinary doors in compact, low-resolution drawings. Wall thickness is
+    # still enforced separately by LocalOpeningAnalyzer.
+    minimum_gap = max(12, int(round(diagonal * 0.009)))
     candidates = LocalOpeningAnalyzer(
         min_gap_px=minimum_gap,
         max_gap_factor=14.0,
@@ -197,6 +265,10 @@ def detect_openings(image: np.ndarray, pixel_scale: dict[str, Any] | None = None
         )
         frame_count, frame_regularity = _opening_frame_marks(gray, candidate)
         swing_score = _door_swing_score(edge_distance, candidate)
+        room_relation, adjacent_spaces = _room_side_relation(spaces or [], candidate)
+        symbol_prediction = classify_opening_symbol(image, candidate)
+        symbol_type = symbol_prediction["type"] if symbol_prediction else None
+        symbol_confidence = float(symbol_prediction["confidence"]) if symbol_prediction else None
         thickness = max(1.0, float(candidate.wall_thickness))
         near_outer_wall = hull_distance <= max(2.4 * thickness, diagonal * 0.035)
 
@@ -204,7 +276,12 @@ def detect_openings(image: np.ndarray, pixel_scale: dict[str, Any] | None = None
         # For an exterior window, only inspect the plan interior; for an interior
         # opening, inspect both sides of the wall.
         clearance_limit = max(3.0 * thickness, 0.45 * candidate.width)
-        if candidate.orientation == "horizontal":
+        if candidate.orientation == "diagonal":
+            tx = (candidate.end[0] - candidate.start[0]) / max(1.0, candidate.width)
+            ty = (candidate.end[1] - candidate.start[1]) / max(1.0, candidate.width)
+            nx, ny = -ty, tx
+            inward_direction = 1 if (footprint_center[0] - center[0]) * nx + (footprint_center[1] - center[1]) * ny >= 0 else -1
+        elif candidate.orientation == "horizontal":
             inward_direction = 1 if footprint_center[1] >= center[1] else -1
         else:
             inward_direction = 1 if footprint_center[0] >= center[0] else -1
@@ -220,25 +297,63 @@ def detect_openings(image: np.ndarray, pixel_scale: dict[str, Any] | None = None
 
         # An exterior gap without a visible frame is usually a broken wall line,
         # image clipping, or an entrance to an exterior recess—not a window.
-        if near_outer_wall and (frame_count < 2 or frame_regularity < 0.35):
+        door_width_ok = (
+            (1.8 <= candidate.width / pixel_scale["pixels_per_unit"] <= 4.6)
+            if pixel_scale and pixel_scale.get("pixels_per_unit")
+            else (2.2 <= candidate.width / thickness <= 10.0)
+        )
+        door_symbol_ok = swing_score >= 0.32 and door_width_ok
+        interior_door = room_relation == "between_rooms" and door_width_ok
+        frame_window_evidence = (
+            frame_count >= 2
+            and frame_regularity >= 0.35
+            and (near_outer_wall or frame_count >= 3 or frame_regularity >= 0.75)
+        )
+        # Exterior entries are the important exception to the room-side rule:
+        # a door leaf/swing is direct evidence that an exterior opening is a
+        # door, even though only one enclosed room touches it.
+        exterior_door = (
+            room_relation == "room_to_exterior"
+            and door_width_ok
+            and swing_score >= 0.32
+            and ((symbol_type == "door" and (symbol_confidence or 0.0) >= 0.65) or swing_score >= 0.55)
+        )
+        exterior_type_conflict = (
+            room_relation == "room_to_exterior"
+            and symbol_type == "door"
+            and (symbol_confidence or 0.0) >= 0.55
+            and swing_score < 0.32
+        )
+        # In room-aware mode, classify by which spaces meet at the wall. Do not
+        # let incidental arcs or text promote unknown gaps into doors.
+        exterior_window = room_relation == "room_to_exterior"
+        if topology_available and room_relation in ("unknown", "same_room"):
+            continue
+        if near_outer_wall and not (interior_door or exterior_window or (not topology_available and frame_window_evidence)):
             continue
         if blocked_by_near_wall:
             continue
 
-        if frame_count >= 2 and frame_regularity >= 0.35 and (
-            near_outer_wall or frame_count >= 3 or frame_regularity >= 0.75
-        ):
+        if interior_door:
+            opening_type = "door"
+            type_confidence = min(0.84, 0.60 + 0.20 * candidate.confidence)
+            reason = f"فتحة بين مساحتين داخليتين · {adjacent_spaces[0]} و{adjacent_spaces[1]}"
+        elif exterior_door:
+            opening_type = "door"
+            type_confidence = min(0.88, 0.62 + 0.18 * swing_score + 0.08 * candidate.confidence)
+            reason = f"باب خارجي محتمل · دليل ضلفة/قوس فتح {swing_score:.2f}"
+        elif exterior_type_conflict:
+            opening_type = "opening"
+            type_confidence = min(0.62, 0.42 + 0.20 * (symbol_confidence or 0.0))
+            reason = "الفتحة على الحائط الخارجي، لكن شكل الرمز يوحي بباب ولا يظهر قوس فتح كافٍ؛ تحتاج مراجعة"
+        elif exterior_window or (not topology_available and frame_window_evidence):
             opening_type = "window"
             type_confidence = min(0.86, 0.66 + 0.05 * min(frame_count - 1, 3) + 0.08 * frame_regularity + 0.06 * candidate.confidence)
-            reason = f"إطارات متقاطعة {frame_count} · انتظام {frame_regularity:.2f} · قرب من المحيط {hull_distance:.0f}px"
-        elif not near_outer_wall and swing_score >= 0.28 and (
-            (1.8 <= candidate.width / pixel_scale["pixels_per_unit"] <= 4.6)
-            if pixel_scale and pixel_scale.get("pixels_per_unit")
-            else (2.2 <= candidate.width / thickness <= 7.5)
-        ):
+            reason = f"فتحة على المحيط الخارجي · {adjacent_spaces[0] if adjacent_spaces else 'منطقة داخلية'}"
+        elif door_symbol_ok and not topology_available:
             opening_type = "door"
-            type_confidence = min(0.82, 0.57 + 0.12 * candidate.confidence + 0.24 * min(1.0, swing_score))
-            reason = f"فتحة داخلية ضمن عرض باب معتاد مع دليل قوس/ضلفة {swing_score:.2f}"
+            type_confidence = min(0.84, 0.54 + 0.28 * swing_score + 0.08 * candidate.confidence)
+            reason = f"قوس فتح بمحاذاة مفصلة الفتحة · تطابق {swing_score:.2f}"
         else:
             opening_type = "opening"
             type_confidence = min(0.62, 0.38 + 0.25 * candidate.confidence)
@@ -274,6 +389,11 @@ def detect_openings(image: np.ndarray, pixel_scale: dict[str, Any] | None = None
                     round(float(distance), 1) if distance is not None else None
                     for distance in clearance_distances
                 ],
+                "room_relation": room_relation,
+                "adjacent_space_ids": adjacent_spaces,
+                "detector": "geometry+licensed_symbol_classifier" if symbol_prediction else "geometry",
+                "symbol_classifier_type": symbol_type,
+                "symbol_classifier_confidence": round(symbol_confidence, 2) if symbol_confidence is not None else None,
                 "reason": reason,
             },
         }

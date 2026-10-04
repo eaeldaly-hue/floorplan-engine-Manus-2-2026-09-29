@@ -63,7 +63,6 @@ def test_valid_image_upload_is_decoded_and_only_overlay_is_retained(tmp_path):
                 "unlabeled_spaces": [],
                 "warnings": [],
                 "overlay_png": b"\x89PNG\r\n\x1a\n",
-                "openings_overlay_png": b"\x89PNG\r\n\x1a\n",
             }
 
     app = create_app({
@@ -87,7 +86,7 @@ def test_valid_image_upload_is_decoded_and_only_overlay_is_retained(tmp_path):
     assert overlay.status_code == 200
     assert overlay.data.startswith(b"\x89PNG\r\n\x1a\n")
     result_dir = Path(app.config["UPLOAD_FOLDER"]) / data["result_id"]
-    assert sorted(path.name for path in result_dir.iterdir()) == ["openings-overlay.png", "rooms-overlay.png"]
+    assert sorted(path.name for path in result_dir.iterdir()) == ["rooms-overlay.png"]
 
 
 def test_pdf_decoder_uses_first_page_and_reports_multipage_file():
@@ -128,7 +127,7 @@ def test_sample_endpoint_returns_rooms_and_a_fetchable_overlay(client):
     assert overlay.data.startswith(b"\x89PNG\r\n\x1a\n")
 
     result_dir = Path(client.application.config["UPLOAD_FOLDER"]) / data["result_id"]
-    assert sorted(path.name for path in result_dir.iterdir()) == ["openings-overlay.png", "rooms-overlay.png"]
+    assert sorted(path.name for path in result_dir.iterdir()) == ["rooms-overlay.png"]
 
 
 def test_result_id_path_is_validated(client):

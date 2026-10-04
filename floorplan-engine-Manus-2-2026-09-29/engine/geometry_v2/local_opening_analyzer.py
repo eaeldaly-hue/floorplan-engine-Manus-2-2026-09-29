@@ -127,10 +127,14 @@ class LocalOpeningAnalyzer:
 
             a = segments[i]
 
-            # Horizontal, vertical, and diagonal walls each use their own
-            # geometric pairing so the opening keeps the wall's true axis.
+            # -------------------------------------------------
+            # Ignore diagonal geometry.
+            # -------------------------------------------------
 
-            if a.orientation.value not in ("horizontal", "vertical", "diagonal"):
+            if a.orientation.value not in (
+                "horizontal",
+                "vertical",
+            ):
                 continue
 
             for j in range(
@@ -256,54 +260,7 @@ class LocalOpeningAnalyzer:
                 thickness,
             )
 
-        if orientation == "diagonal":
-            return self._diagonal_pair(a, b, index_a, index_b, thickness)
-
         return None
-
-    def _diagonal_pair(self, a, b, index_a, index_b, thickness):
-        """Find a gap between two collinear oblique wall fragments."""
-        ax, ay = a.start
-        bx, by = a.end
-        length_a = max(1e-6, float(np.hypot(bx - ax, by - ay)))
-        tx, ty = (bx - ax) / length_a, (by - ay) / length_a
-        cx, cy = b.start
-        dx, dy = b.end
-        length_b = max(1e-6, float(np.hypot(dx - cx, dy - cy)))
-        dot = ((dx - cx) / length_b) * tx + ((dy - cy) / length_b) * ty
-        if abs(dot) < 0.985:
-            return None
-        if dot < 0:
-            cx, cy, dx, dy = dx, dy, cx, cy
-
-        nx, ny = -ty, tx
-        normal_a = ((ax + bx) / 2.0) * nx + ((ay + by) / 2.0) * ny
-        normal_b = ((cx + dx) / 2.0) * nx + ((cy + dy) / 2.0) * ny
-        normal_distance = abs(normal_a - normal_b)
-        if normal_distance > self.axis_tolerance_factor * thickness:
-            return None
-
-        a_interval = sorted((ax * tx + ay * ty, bx * tx + by * ty))
-        b_interval = sorted((cx * tx + cy * ty, dx * tx + dy * ty))
-        if a_interval[1] < b_interval[0]:
-            gap_start, gap_end = a_interval[1], b_interval[0]
-        elif b_interval[1] < a_interval[0]:
-            gap_start, gap_end = b_interval[1], a_interval[0]
-        else:
-            return None
-
-        gap = gap_end - gap_start
-        if not self._valid_gap(gap, thickness):
-            return None
-        normal_mid = (normal_a + normal_b) / 2.0
-        start = (tx * gap_start + nx * normal_mid, ty * gap_start + ny * normal_mid)
-        end = (tx * gap_end + nx * normal_mid, ty * gap_end + ny * normal_mid)
-        confidence = self._confidence(gap, thickness, normal_distance)
-        return LocalOpeningCandidate(
-            id="", start=start, end=end, width=gap, orientation="diagonal",
-            wall_thickness=thickness, segment_a=index_a, segment_b=index_b,
-            source="diagonal_segment_gap", confidence=confidence,
-        )
 
     # =========================================================
     # Horizontal
@@ -750,9 +707,6 @@ class LocalOpeningAnalyzer:
         if mask.size == 0:
             return None
 
-        if candidate.orientation == "diagonal":
-            return self._validate_diagonal_candidate(candidate, mask)
-
         x1, y1 = candidate.start
         x2, y2 = candidate.end
 
@@ -908,37 +862,6 @@ class LocalOpeningAnalyzer:
     # Side support
     # =========================================================
 
-    def _validate_diagonal_candidate(self, candidate, mask):
-        x1, y1 = candidate.start
-        x2, y2 = candidate.end
-        length = max(1.0, float(np.hypot(x2 - x1, y2 - y1)))
-        tx, ty = (x2 - x1) / length, (y2 - y1) / length
-        nx, ny = -ty, tx
-        half = max(2, int(round(candidate.wall_thickness * 0.45)))
-        along = max(3, int(round(self.validation_margin_px)))
-
-        def occupancy(a, b):
-            samples = []
-            count = max(4, int(round(abs(b - a) * 0.75)))
-            for tangent_distance in np.linspace(a, b, count):
-                for normal_distance in range(-half, half + 1, max(1, half // 2)):
-                    x = int(round(x1 + tx * tangent_distance + nx * normal_distance))
-                    y = int(round(y1 + ty * tangent_distance + ny * normal_distance))
-                    if 0 <= x < mask.shape[1] and 0 <= y < mask.shape[0]:
-                        samples.append(mask[y, x] > 0)
-            return float(np.mean(samples)) if samples else 1.0
-
-        gap_occupancy = occupancy(0.0, length)
-        if gap_occupancy > self.max_wall_occupancy:
-            return None
-        support_a = occupancy(-along, -1.0)
-        support_b = occupancy(length + 1.0, length + along)
-        support_score = (support_a + support_b) / 2.0
-        if support_score < self.min_side_support:
-            return None
-        empty_score = max(0.0, 1.0 - gap_occupancy / max(self.max_wall_occupancy, 0.001))
-        return float(max(0.60, 0.55 * empty_score + 0.45 * support_score))
-
     def _side_support(
         self,
         mask: np.ndarray,
@@ -958,24 +881,6 @@ class LocalOpeningAnalyzer:
                 thickness
             ),
         )
-
-        if candidate.orientation == "diagonal":
-            x1, y1 = candidate.start
-            x2, y2 = candidate.end
-            length = max(1.0, float(np.hypot(x2 - x1, y2 - y1)))
-            tx, ty = (x2 - x1) / length, (y2 - y1) / length
-            nx, ny = -ty, tx
-            values = []
-            for base in (-support, length):
-                occupied = []
-                for tangent_distance in np.linspace(base, base + support, max(3, support)):
-                    for normal_distance in np.linspace(-thickness, thickness, max(3, int(thickness))):
-                        x = int(round(x1 + tx * tangent_distance + nx * normal_distance))
-                        y = int(round(y1 + ty * tangent_distance + ny * normal_distance))
-                        if 0 <= x < w and 0 <= y < h:
-                            occupied.append(mask[y, x] > 0)
-                values.append(float(np.mean(occupied)) if occupied else 0.0)
-            return min(values)
 
         if candidate.orientation == "horizontal":
 

@@ -1,0 +1,82 @@
+{
+  "schema_version": "1.0",
+  "generator_version": "0.1.0",
+  "seed": 42,
+  "image": {
+    "filename": "floorplan_0001.png",
+    "width": 1200,
+    "height": 900
+  },
+  "walls": [
+    {
+      "id": "wall_001",
+      "x1": 100,
+      "y1": 100,
+      "x2": 1100,
+      "y2": 100,
+      "thickness": 20
+    },
+    {
+      "id": "wall_002",
+      "x1": 1100,
+      "y1": 100,
+      "x2": 1100,
+      "y2": 800,
+      "thickness": 20
+    },
+    {
+      "id": "wall_003",
+      "x1": 1100,
+      "y1": 800,
+      "x2": 100,
+      "y2": 800,
+      "thickness": 20
+    },
+    {
+      "id": "wall_004",
+      "x1": 100,
+      "y1": 800,
+      "x2": 100,
+      "y2": 100,
+      "thickness": 20
+    }
+  ],
+  "doors": [
+    {
+      "id": "door_001",
+      "wall_id": "wall_001",
+      "x": 350,
+      "y": 100,
+      "width": 90,
+      "orientation": "horizontal",
+      "swing": "inward"
+    },
+    {
+      "id": "door_002",
+      "wall_id": "wall_002",
+      "x": 1100,
+      "y": 300,
+      "width": 90,
+      "orientation": "vertical",
+      "swing": "inward"
+    }
+  ],
+  "windows": [
+    {
+      "id": "window_001",
+      "wall_id": "wall_001",
+      "x": 750,
+      "y": 100,
+      "width": 140,
+      "orientation": "horizontal"
+    },
+    {
+      "id": "window_002",
+      "wall_id": "wall_003",
+      "x": 600,
+      "y": 800,
+      "width": 160,
+      "orientation": "horizontal"
+    }
+  ]
+}

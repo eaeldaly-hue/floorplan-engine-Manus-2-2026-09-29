@@ -1,0 +1,79 @@
+================================================================================
+FLOOR PLAN REGRESSION REPORT V2
+================================================================================
+
+CURRENT COMMIT:
+5c43e0904cf3da92bd8f8968897a29b65fa4fe52
+
+BASELINE COMMIT:
+b34c7decda3798d0b587392749af772c279fcd44
+
+================================================================================
+CURRENT
+================================================================================
+
+
+ERRORS:
+
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    from engine.analyzer import analyze_floor_plan
+ImportError: cannot import name 'analyze_floor_plan' from 'engine.analyzer' (/Users/eslameldaly/Floor P/floorplan-engine-Manus 2-2026-09-29/engine/analyzer.py)
+
+
+================================================================================
+BASELINE
+================================================================================
+
+
+ERRORS:
+
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    from engine.analyzer import analyze_floor_plan
+ImportError: cannot import name 'analyze_floor_plan' from 'engine.analyzer' (/private/tmp/floorplan-baseline/engine/analyzer.py)
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+room_count:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+unlabeled_space_count:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+opening_count:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+door_count:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+window_count:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+unclassified_opening_count:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+ROOM RECORDS:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+rooms linked to spaces:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+rooms without space:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND
+
+OPENINGS:
+CURRENT : NOT FOUND
+BASELINE: NOT FOUND

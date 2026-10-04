@@ -6,6 +6,8 @@ import math
 import os
 import re
 import statistics
+from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 import cv2
@@ -18,21 +20,14 @@ from .walls.segments import WallSegmentExtractor
 from .walls.room_mask import RoomMaskBuilder
 from .rooms.detect import RoomDetector
 from .opening_detection import detect_openings, draw_openings_overlay
-from .opening_symbol_model import model_status as opening_symbol_model_status
 from .ocr_runtime import configure_tesseract
-from .analysis.ocr import (
-    OCRLine,
-    configured_ocr_languages,
-    extract_ocr,
-    ocr_lines,
-    pytesseract,
-)
-from .analysis.ocr_fusion import (
-    associate_room_labels,
-    group_dimensions,
-    group_room_labels,
-)
 
+try:
+    import pytesseract
+    from pytesseract import Output
+except ImportError:  # The geometric pipeline remains usable without OCR.
+    pytesseract = None
+    Output = None
 
 
 ROOM_TERMS = (
@@ -89,6 +84,100 @@ METRIC_PAIR = re.compile(
     re.IGNORECASE,
 )
 
+
+@dataclass
+class OCRLine:
+    text: str
+    x: int
+    y: int
+    width: int
+    height: int
+    confidence: float
+    source: str
+
+    @property
+    def center(self) -> tuple[int, int]:
+        return (self.x + self.width // 2, self.y + self.height // 2)
+
+    @property
+    def right(self) -> int:
+        return self.x + self.width
+
+    @property
+    def bottom(self) -> int:
+        return self.y + self.height
+
+
+@lru_cache(maxsize=1)
+def configured_ocr_languages() -> str:
+    requested = os.environ.get("FLOORPLAN_OCR_LANG", "eng").strip() or "eng"
+    if pytesseract is None:
+        return ""
+    configure_tesseract()
+    try:
+        available = set(pytesseract.get_languages(config=""))
+    except Exception:
+        return "eng"
+    requested_parts = requested.split("+")
+    if all(language in available for language in requested_parts):
+        return requested
+    if "eng" in available:
+        return "eng"
+    return next(iter(sorted(available)), "eng")
+
+
+def _ocr_lines(image: np.ndarray, psm: int) -> list[OCRLine]:
+    if pytesseract is None:
+        return []
+    data = pytesseract.image_to_data(
+        image,
+        config=f"--oem 3 --psm {psm}",
+        output_type=Output.DICT,
+        lang=configured_ocr_languages(),
+    )
+    grouped: dict[tuple[int, int, int, int], list[tuple[int, int, int, int, str, float]]] = {}
+    keys = ("page_num", "block_num", "par_num", "line_num")
+    for index, raw_text in enumerate(data["text"]):
+        text = raw_text.strip()
+        if not text:
+            continue
+        try:
+            confidence = float(data["conf"][index])
+        except (TypeError, ValueError):
+            continue
+        if confidence < 18:
+            continue
+        key = tuple(int(data[field][index]) for field in keys)
+        grouped.setdefault(key, []).append(
+            (
+                int(data["left"][index]),
+                int(data["top"][index]),
+                int(data["width"][index]),
+                int(data["height"][index]),
+                text,
+                confidence,
+            )
+        )
+
+    lines = []
+    for tokens in grouped.values():
+        tokens.sort(key=lambda token: token[0])
+        left = min(token[0] for token in tokens)
+        top = min(token[1] for token in tokens)
+        right = max(token[0] + token[2] for token in tokens)
+        bottom = max(token[1] + token[3] for token in tokens)
+        lines.append(
+            OCRLine(
+                text=" ".join(token[4] for token in tokens),
+                x=left,
+                y=top,
+                width=right - left,
+                height=bottom - top,
+                confidence=sum(token[5] for token in tokens) / len(tokens),
+                source=f"tesseract-psm-{psm}",
+            )
+        )
+    return lines
 
 
 def _parse_dimensions(text: str) -> dict[str, Any] | None:
@@ -160,7 +249,6 @@ def _parse_dimensions(text: str) -> dict[str, Any] | None:
     }
 
 
-
 def _format_dimensions(dimensions: dict[str, Any]) -> str:
     if dimensions["unit"] == "m":
         return f"{dimensions['width']:g} m × {dimensions['height']:g} m"
@@ -174,7 +262,6 @@ def _format_dimensions(dimensions: dict[str, Any]) -> str:
         return f"{feet}'{inches}\""
 
     return f"{feet_inches(dimensions['width'])} × {feet_inches(dimensions['height'])}"
-
 
 
 def _dimension_candidates(lines: list[OCRLine]) -> list[dict[str, Any]]:
@@ -443,7 +530,7 @@ def _retry_dimensions_near_label(
     candidates = []
     for psm in (6, 7):
         try:
-            lines = ocr_lines(crop, psm)
+            lines = _ocr_lines(crop, psm)
         except Exception:
             continue
         for ocr_line in lines:
@@ -980,54 +1067,21 @@ class FloorPlanAnalyzer:
             raise ValueError("The image is too large (maximum 25 megapixels)")
 
         warnings = []
-        ocr_result = None
-        room_lines: list[OCRLine] = []
-        dimension_lines: list[OCRLine] = []
-
+        ocr_primary: list[OCRLine] = []
+        ocr_secondary: list[OCRLine] = []
         if pytesseract is not None:
             try:
-                ocr_result = extract_ocr(image)
-
-                # Convert grouped OCR evidence back to the legacy OCRLine
-                # interface used by the existing room/dimension pipeline.
-                room_groups = group_room_labels(ocr_result.room_labels)
-                dimension_groups = group_dimensions(ocr_result.dimensions)
-
-                for group in room_groups:
-                    if not _room_name(group.text):
-                        continue
-
-                    room_lines.append(
-                        OCRLine(
-                            text=group.text,
-                            x=group.x,
-                            y=group.y,
-                            width=group.width,
-                            height=group.height,
-                            confidence=group.confidence,
-                            source="robust-ocr",
-                        )
-                    )
-
-                for group in dimension_groups:
-                    dimension_lines.append(
-                        OCRLine(
-                            text=group.text,
-                            x=group.x,
-                            y=group.y,
-                            width=group.width,
-                            height=group.height,
-                            confidence=group.confidence,
-                            source="robust-ocr",
-                        )
-                    )
-
+                ocr_primary = _ocr_lines(image, 11)
+                ocr_secondary = _ocr_lines(image, 6)
             except Exception as exc:
                 warnings.append(f"OCR could not read text: {type(exc).__name__}")
         else:
             warnings.append("Tesseract OCR is unavailable; room names and dimensions were not read")
 
-        clean_image = image
+        room_lines = [line for line in ocr_primary if _room_name(line.text)]
+        dimension_lines = ocr_primary + ocr_secondary
+
+        clean_image, _ = TextMasker(image).remove_text()
         wall_mask = WallMaskBuilder(clean_image).build()
         spaces = SpaceSegmenter(
             clean_image,
@@ -1076,16 +1130,7 @@ class FloorPlanAnalyzer:
         if any(room["boundary"] and room["boundary"]["method"] != "wall-region" for room in rooms):
             warnings.append("Orange boundaries are dimension-based estimates; green boundaries follow extracted wall regions.")
 
-        openings = detect_openings(image, scale, spaces=spaces)
-        model_status = opening_symbol_model_status()
-        if model_status["reason"] == "torch_missing":
-            warnings.append(
-                "The trained local door/window classifier is present, but PyTorch is missing; install the 'ml' extra to enable it."
-            )
-        elif not model_status["available"]:
-            warnings.append(
-                "The project-owned door/window symbol classifier is not trained yet; geometric wall and room analysis is active."
-            )
+        openings = detect_openings(image, scale)
         opening_counts = {
             kind: sum(opening["type"] == kind for opening in openings)
             for kind in ("door", "window", "opening")

@@ -115,7 +115,7 @@ class WallMaskBuilder:
 
         return mask
 
-    def build(self, connect_disconnected=True):
+    def build(self):
         """
         Returns a uint8 mask (0/255) where 255 marks pixels that belong to
         a wall stroke thick enough to be structural.
@@ -148,7 +148,6 @@ class WallMaskBuilder:
             wall_mask, cv2.MORPH_CLOSE, close_kernel, iterations=1
         )
 
-        if connect_disconnected:
-            wall_mask = self._connect_disconnected_pieces(wall_mask)
+        wall_mask = self._connect_disconnected_pieces(wall_mask)
 
         return wall_mask

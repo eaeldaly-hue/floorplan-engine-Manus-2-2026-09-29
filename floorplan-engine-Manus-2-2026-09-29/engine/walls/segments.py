@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 
 
@@ -172,72 +171,5 @@ class WallSegmentExtractor:
 
         return segments
 
-    def detect_diagonal(self):
-        """Extract long oblique wall runs; axis scans cannot represent them."""
-        minimum_line = max(24, int(round(self.min_length * 1.25)))
-        lines = cv2.HoughLinesP(
-            self.mask,
-            rho=1,
-            theta=np.pi / 180.0,
-            threshold=max(12, int(round(minimum_line * 0.55))),
-            minLineLength=minimum_line,
-            maxLineGap=max(4, int(round(self.max_thickness * 1.25))),
-        )
-        if lines is None:
-            return []
-
-        distance = cv2.distanceTransform((self.mask > 0).astype(np.uint8), cv2.DIST_L2, 3)
-        candidates = []
-        for line in lines[:, 0, :]:
-            x1, y1, x2, y2 = map(int, line)
-            dx, dy = x2 - x1, y2 - y1
-            length = float(np.hypot(dx, dy))
-            angle = abs(float(np.degrees(np.arctan2(dy, dx)))) % 180.0
-            distance_from_axis = min(angle, 180.0 - angle, abs(angle - 90.0))
-            if length < minimum_line or distance_from_axis <= 12.0:
-                continue
-
-            sample_count = max(3, int(length / 8))
-            xs = np.linspace(x1, x2, sample_count).round().astype(int)
-            ys = np.linspace(y1, y2, sample_count).round().astype(int)
-            inside = (xs >= 0) & (xs < self.width) & (ys >= 0) & (ys < self.height)
-            radii = distance[ys[inside], xs[inside]]
-            thickness = float(np.clip(2.0 * np.median(radii), self.min_thickness, self.max_thickness))
-            candidates.append({
-                "orientation": "diagonal",
-                "start": (x1, y1),
-                "end": (x2, y2),
-                "length": length,
-                "thickness": thickness,
-                "confidence": 0.72,
-            })
-
-        # Hough sees both edges of thick walls. Keep the longest member of
-        # overlapping, nearly parallel detections in the same wall band.
-        kept = []
-        for candidate in sorted(candidates, key=lambda item: item["length"], reverse=True):
-            ax, ay = candidate["start"]
-            bx, by = candidate["end"]
-            ux, uy = (bx - ax) / candidate["length"], (by - ay) / candidate["length"]
-            midpoint = ((ax + bx) / 2.0, (ay + by) / 2.0)
-            duplicate = False
-            for existing in kept:
-                ex, ey = existing["start"]
-                fx, fy = existing["end"]
-                elen = existing["length"]
-                vx, vy = (fx - ex) / elen, (fy - ey) / elen
-                if abs(ux * vx + uy * vy) < 0.985:
-                    continue
-                distance_between = abs((midpoint[0] - ex) * (-uy) + (midpoint[1] - ey) * ux)
-                if distance_between <= max(candidate["thickness"], existing["thickness"]) * 1.4:
-                    duplicate = True
-                    break
-            if not duplicate:
-                kept.append(candidate)
-        return kept
-
-    def detect(self, include_diagonal=False):
-        segments = self.detect_horizontal() + self.detect_vertical()
-        if include_diagonal:
-            segments.extend(self.detect_diagonal())
-        return segments
+    def detect(self):
+        return self.detect_horizontal() + self.detect_vertical()
