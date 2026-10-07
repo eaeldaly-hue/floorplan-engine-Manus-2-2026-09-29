@@ -96,27 +96,34 @@ def as_structure(structure, model, keep_openings: bool = True):
                                **extra)
 
 
-def run(image, room_lines, structure, evidence_image=None, prefer: bool = False):
-    """(plan_model payload or None, warnings, structure) for the analyzer, per the configured mode.
-
-    In fallback, when the Plan Model finds spaces, the returned structure carries them (see
-    `as_structure`), so rooms and overlays are built from them; otherwise the legacy structure is
-    returned unchanged. `prefer` (structural-layer input): the Plan Model is used whenever it finds
-    spaces, even if the legacy structure found some; `evidence_image` is the full drawing whose
-    symbols explain the openings (engine.plan.reconstruct)."""
+def prepare(image, structure, evidence_image=None, prefer: bool = False):
+    """The text-independent part of `run` (the reconstruction itself), so it can run while OCR
+    reads the page. Returns a pending result for `finish`, or None when the Plan Model is not used."""
     mode = plan_model_mode()
     if mode == "off" and not prefer:
-        return None, [], structure
+        return None
     failed = legacy_failed(structure) or prefer
     if mode == "fallback" and not failed:
-        return None, [], structure
+        return None
     from .reconstruct import reconstruct
 
-    labels = [(line.text, line.center) for line in room_lines]
     try:
-        model = reconstruct(image, room_labels=labels, evidence_image=evidence_image)
+        model = reconstruct(image, evidence_image=evidence_image)
     except Exception as exc:                       # never break the analysis
-        return None, [f"Plan Model reconstruction failed: {type(exc).__name__}"], structure
+        return {"error": exc}
+    return {"model": model, "failed": failed, "prefer": prefer}
+
+
+def finish(pending, room_lines, structure):
+    """(plan_model payload or None, warnings, structure): labels attached, structure substituted."""
+    if pending is None:
+        return None, [], structure
+    if "error" in pending:
+        return None, [f"Plan Model reconstruction failed: {type(pending['error']).__name__}"], structure
+    from .reconstruct import attach_labels
+
+    model, failed, prefer = pending["model"], pending["failed"], pending["prefer"]
+    attach_labels(model.spaces, model._labels, [(line.text, line.center) for line in room_lines])
     out = payload(model, "fallback" if failed else "shadow")
     notes = []
     if failed and model.spaces:
@@ -130,3 +137,14 @@ def run(image, room_lines, structure, evidence_image=None, prefer: bool = False)
         notes.append("The standard wall detection found no enclosed space, and the experimental Plan Model could "
                      "not reconstruct one either.")
     return out, notes, structure
+
+
+def run(image, room_lines, structure, evidence_image=None, prefer: bool = False):
+    """(plan_model payload or None, warnings, structure) for the analyzer, per the configured mode.
+
+    In fallback, when the Plan Model finds spaces, the returned structure carries them (see
+    `as_structure`), so rooms and overlays are built from them; otherwise the legacy structure is
+    returned unchanged. `prefer` (structural-layer input): the Plan Model is used whenever it finds
+    spaces, even if the legacy structure found some; `evidence_image` is the full drawing whose
+    symbols explain the openings (engine.plan.reconstruct). Same as prepare + finish."""
+    return finish(prepare(image, structure, evidence_image, prefer), room_lines, structure)

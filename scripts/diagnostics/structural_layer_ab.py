@@ -63,21 +63,21 @@ def footprint(layer, shape) -> np.ndarray:
 
 def run(analyzer, image, name, evidence, structure_image=None):
     captured = {}
-    original = analyzer_module.plan_adapter.run
+    original = analyzer_module.plan_adapter.finish
 
-    def spy(img, lines, structure, **kw):
-        out = original(img, lines, structure, **kw)
+    def spy(pending, lines, structure):
+        out = original(pending, lines, structure)
         captured["structure"] = out[2]
         captured["plan_model"] = out[0]
         return out
-    analyzer_module.plan_adapter.run = spy
+    analyzer_module.plan_adapter.finish = spy
     try:
         t = time.perf_counter()
         result = analyzer.analyze(image, name, text_evidence=evidence or None, structure_image=structure_image,
                                   structure_engine="legacy")
         seconds = time.perf_counter() - t
     finally:
-        analyzer_module.plan_adapter.run = original
+        analyzer_module.plan_adapter.finish = original
     return result, captured["structure"], captured["plan_model"], seconds
 
 

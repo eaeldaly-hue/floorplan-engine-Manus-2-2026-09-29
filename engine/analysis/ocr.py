@@ -372,7 +372,13 @@ def map_box_to_original(
 # ---------------------------------------------------------------------------
 
 
-def ocr_lines(
+def ocr_lines(image: np.ndarray, psm: int) -> list[OCRLine]:
+    """Run Tesseract and group word observations into OCR lines (memoized: the same crop is read
+    once per process, see `_memo`)."""
+    return list(_memo("lines", _ocr_lines_uncached, image, (psm,), 512, psm))
+
+
+def _ocr_lines_uncached(
     image: np.ndarray,
     psm: int,
 ) -> list[OCRLine]:
@@ -666,6 +672,62 @@ def _configuration_score(
 
 
 def extract_ocr(
+    image: np.ndarray,
+    *,
+    min_confidence: float = 25.0,
+    psms: tuple[int, ...] = (11, 6),
+    max_side: int = 5000,
+) -> OCRResult:
+    """Full-page OCR (see `_extract_ocr_uncached`). Memoized per process: analysing the same page
+    again (another page tab, "Analyze again" with or without cleaning) does not re-read it."""
+    return _memo("page", _extract_ocr_uncached, image, (min_confidence, tuple(psms), max_side), _page_memo_size(),
+                 min_confidence=min_confidence, psms=psms, max_side=max_side)
+
+
+def _page_memo_size() -> int:
+    try:
+        return max(0, int(os.environ.get("FLOORPLAN_OCR_MEMO", "4")))
+    except ValueError:
+        return 4
+
+
+_MEMO: dict = {}
+_MEMO_LOCK = threading.Lock()
+
+
+def _memo(kind: str, fn, image, extra, size: int, *args, **kwargs):
+    """Process-local LRU of OCR results keyed by the exact pixels and parameters. The OCR code
+    cannot change while the process runs, and results are immutable (tuples / new lists per call
+    site), so a hit returns exactly what a fresh read would. size 0 disables it."""
+    if size <= 0 or image is None or getattr(image, "size", 0) == 0:
+        return fn(image, *args, **kwargs)
+    import hashlib
+
+    a = np.ascontiguousarray(image)
+    h = hashlib.blake2b(f"{a.shape}|{a.dtype}|{extra!r}|{configured_ocr_languages()}".encode(), digest_size=20)
+    h.update(memoryview(a).cast("B"))
+    key = h.hexdigest()
+    with _MEMO_LOCK:
+        cache = _MEMO.setdefault(kind, {})
+        if key in cache:
+            value = cache.pop(key)
+            cache[key] = value                      # most recently used
+            return value
+    value = fn(image, *args, **kwargs)
+    with _MEMO_LOCK:
+        cache = _MEMO.setdefault(kind, {})
+        cache[key] = value
+        while len(cache) > size:
+            cache.pop(next(iter(cache)))
+    return value
+
+
+def clear_ocr_memo() -> None:
+    with _MEMO_LOCK:
+        _MEMO.clear()
+
+
+def _extract_ocr_uncached(
     image: np.ndarray,
     *,
     min_confidence: float = 25.0,

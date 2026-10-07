@@ -50,18 +50,18 @@ def _analyze(image, name, evidence, structure_image=None, engine="legacy"):
     from engine.analyzer import FloorPlanAnalyzer
 
     captured = {}
-    original = analyzer_module.plan_adapter.run
+    original = analyzer_module.plan_adapter.finish
 
-    def spy(img, lines, structure, **kw):
-        out = original(img, lines, structure, **kw)
+    def spy(pending, lines, structure):
+        out = original(pending, lines, structure)
         captured["structure"] = out[2]
         return out
-    analyzer_module.plan_adapter.run = spy
+    analyzer_module.plan_adapter.finish = spy
     try:
         result = FloorPlanAnalyzer().analyze(image, name, text_evidence=evidence or None, structure_image=structure_image,
                                              structure_engine=engine)
     finally:
-        analyzer_module.plan_adapter.run = original
+        analyzer_module.plan_adapter.finish = original
     return result, captured["structure"]
 
 

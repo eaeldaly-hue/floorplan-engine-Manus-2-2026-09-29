@@ -1279,15 +1279,19 @@ class FloorPlanAnalyzer:
 
     def analyze(self, image: np.ndarray, source_name: str = "floor-plan", text_evidence=None,
                 structure_image: np.ndarray | None = None, structure_engine: str = "legacy",
-                abbreviations: bool | None = None) -> dict[str, Any]:
+                abbreviations: bool | None = None, cleaner=None) -> dict[str, Any]:
         """See `_analyze`. `abbreviations` (experimental): drafting abbreviations (BDRM, BA-1, KIT,
-        W/D...) count as room names; default: only with a structural image."""
-        use = structure_image is not None if abbreviations is None else abbreviations
+        W/D...) count as room names; default: only with a structural image or a cleaner.
+        `cleaner`: callable returning an engine.cleaning CleanResult; it runs in the structural
+        job (concurrently with OCR) and, when applicable, its recognition image is the geometry
+        input. The CleanResult is returned under the private key "_clean_result"."""
+        use = (structure_image is not None or cleaner is not None) if abbreviations is None else abbreviations
         with room_lexicon.abbreviations(use):
-            return self._analyze(image, source_name, text_evidence, structure_image, structure_engine)
+            return self._analyze(image, source_name, text_evidence, structure_image, structure_engine, cleaner)
 
     def _analyze(self, image: np.ndarray, source_name: str = "floor-plan", text_evidence=None,
-                 structure_image: np.ndarray | None = None, structure_engine: str = "legacy") -> dict[str, Any]:
+                 structure_image: np.ndarray | None = None, structure_engine: str = "legacy",
+                 cleaner=None) -> dict[str, Any]:
         """`text_evidence`: optional OCR-style boxes of the document's own text in this image's
         pixel frame (a PDF text layer, ingest.pdf_text). It is merged with OCR of the page; when
         it is None (images, scans) the analysis is exactly the OCR-only analysis.
@@ -1318,11 +1322,24 @@ class FloorPlanAnalyzer:
         room_lines: list[OCRLine] = []
         dimension_lines: list[OCRLine] = []
 
-        # The structural pass (walls, gaps, spaces) needs only the image, so it runs while OCR
-        # reads the text; its result, or its exception, is taken where it was computed before.
+        # Everything structural needs only the image, so it runs while OCR reads the text:
+        # [cleaning ->] walls / gaps / spaces -> Plan Model reconstruction (when used). Text-
+        # dependent steps (label attachment) follow after OCR. Results, or the exception, are taken
+        # where they were computed before.
+        def structural():
+            cleaned, geom = None, geometry
+            if cleaner is not None:
+                cleaned = cleaner()
+                if cleaned is not None and cleaned.applicable:
+                    geom = cleaned.recognition_image
+            st = analyze_structure(geom)
+            prefer = geom is not image and structure_engine == "plan"
+            pending = plan_adapter.prepare(geom, st, evidence_image=image if prefer else None, prefer=prefer)
+            return cleaned, geom, st, pending
+
         background = ThreadPoolExecutor(max_workers=1, thread_name_prefix="floorplan-structure") \
             if ocr_workers() > 1 else None
-        structure_job = background.submit(analyze_structure, geometry) if background else None
+        structure_job = background.submit(structural) if background else None
 
         if pytesseract is not None or text_evidence:
             try:
@@ -1372,18 +1389,14 @@ class FloorPlanAnalyzer:
         # One structural pass: walls, wall gaps, sealed spaces and their topology.
         if structure_job is not None:
             try:
-                structure = structure_job.result()
+                cleaned, geometry, structure, pending_plan = structure_job.result()
             finally:
                 background.shutdown(wait=True)
         else:
-            structure = analyze_structure(geometry)
+            cleaned, geometry, structure, pending_plan = structural()
         # Plan Model: only where the legacy structure found nothing (or in shadow mode); in
         # fallback its spaces replace the empty legacy ones
-        if structure_image is not None and structure_engine == "plan":
-            plan_model, plan_notes, structure = plan_adapter.run(geometry, room_lines, structure,
-                                                                 evidence_image=image, prefer=True)
-        else:
-            plan_model, plan_notes, structure = plan_adapter.run(geometry, room_lines, structure)
+        plan_model, plan_notes, structure = plan_adapter.finish(pending_plan, room_lines, structure)
         warnings.extend(plan_notes)
         wall_mask = structure.wall_mask
         room_lines, rejected_labels = _labels_inside_building(room_lines, structure)
@@ -1465,4 +1478,6 @@ class FloorPlanAnalyzer:
         }
         if plan_model is not None:
             result["plan_model"] = plan_model
+        if cleaner is not None:
+            result["_clean_result"] = cleaned
         return result

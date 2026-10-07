@@ -19,7 +19,9 @@ from engine.ocr_runtime import tesseract_status
 
 logger = logging.getLogger(__name__)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp", "tif", "tiff", "pdf"}
-MAX_PIXELS = 25_000_000
+MAX_PIXELS = 25_000_000           # PDF pages (first-page upload path)
+ANALYSIS_PIXELS = 24_000_000      # images above this are reduced to it
+MAX_DECODED_PIXELS = 200_000_000  # refuse beyond (memory)
 
 
 def _decode_upload(payload: bytes, filename: str) -> tuple[np.ndarray, list[str]]:
@@ -64,8 +66,14 @@ def _decode_upload(payload: bytes, filename: str) -> tuple[np.ndarray, list[str]
     height, width = image.shape[:2]
     if height < 100 or width < 100:
         raise ValueError("أبعاد الصورة صغيرة جدًا؛ الحد الأدنى 100 × 100 بكسل.")
-    if height * width > MAX_PIXELS:
-        raise ValueError("الصورة كبيرة جدًا؛ الحد الأقصى 25 ميغابكسل.")
+    if height * width > MAX_DECODED_PIXELS:
+        raise ValueError("الصورة كبيرة جدًا؛ الحد الأقصى 200 ميغابكسل.")
+    if height * width > ANALYSIS_PIXELS:
+        # large scans and exports are analysed at the engine's working resolution (as PDF pages are)
+        scale = (ANALYSIS_PIXELS / (height * width)) ** 0.5
+        image = cv2.resize(image, (max(1, int(width * scale)), max(1, int(height * scale))), interpolation=cv2.INTER_AREA)
+        warnings.append(f"Large image ({width} × {height} px) analysed at {image.shape[1]} × {image.shape[0]} px "
+                        f"(the engine's {ANALYSIS_PIXELS // 1_000_000} MP working resolution).")
     return image, warnings
 
 
@@ -100,11 +108,10 @@ def create_app(test_config: dict | None = None) -> Flask:
     def analyze_and_store(image: np.ndarray, filename: str, load_warnings: list[str], extra: dict | None = None,
                           page_image: np.ndarray | None = None, text_evidence: tuple = (),
                           cleaned=None):
-        structure_image = cleaned.recognition_image if cleaned is not None and cleaned.applicable else None
+        cleaner = cleaned                     # deferred cleaning step (run_cleaner) or None
         try:
-            if structure_image is not None:
-                result = analyzer.analyze(image, filename, text_evidence=text_evidence or None,
-                                          structure_image=structure_image)
+            if cleaner is not None:
+                result = analyzer.analyze(image, filename, text_evidence=text_evidence or None, cleaner=cleaner)
             elif text_evidence:
                 result = analyzer.analyze(image, filename, text_evidence=text_evidence)
             else:
@@ -118,6 +125,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         result_id = uuid.uuid4().hex
         result_dir = result_root / result_id
         result_dir.mkdir(parents=True, exist_ok=False)
+        cleaned = result.pop("_clean_result", None) if cleaner is not None else None
         overlay_png = result.pop("overlay_png")
         (result_dir / "rooms-overlay.png").write_bytes(overlay_png)
         if cleaned is not None:
@@ -145,12 +153,19 @@ def create_app(test_config: dict | None = None) -> Flask:
         return jsonify(result)
 
     def run_cleaner(image, warnings, pdf_path, page, evidence, body):
-        """Architectural Cleaning (engine.cleaning): None when off (the analysis is unchanged)."""
-        from engine.cleaning import clean, enabled
+        """Architectural Cleaning (engine.cleaning) as a deferred step: None when off (the analysis
+        is unchanged), else a callable the analyzer runs in its structural job, concurrently with
+        OCR."""
+        from engine.cleaning import enabled
 
         mode = enabled(dict(body) if body else None)
         if mode == "off":
             return None
+        return lambda: _clean_now(image, warnings, pdf_path, page, evidence, mode)
+
+    def _clean_now(image, warnings, pdf_path, page, evidence, mode):
+        from engine.cleaning import clean
+
         try:
             cleaned = clean(image, pdf_path, page, evidence, mode=mode)
         except Exception:
@@ -293,7 +308,9 @@ def create_app(test_config: dict | None = None) -> Flask:
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         cleaned = run_cleaner(image, load_warnings, None, None, (), request.form)
-        return analyze_and_store(image, original_name, load_warnings, cleaned=cleaned)
+        reduced = any(w.startswith("Large image") for w in load_warnings)
+        return analyze_and_store(image, original_name, load_warnings, cleaned=cleaned,
+                                 page_image=image if reduced else None)
 
     @app.post("/api/sample")
     def analyze_sample():

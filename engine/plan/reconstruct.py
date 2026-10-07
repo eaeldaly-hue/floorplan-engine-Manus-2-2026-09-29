@@ -743,6 +743,15 @@ def topology(openings, labels) -> list:
 # orchestration
 # ---------------------------------------------------------------------------
 
+def attach_labels(spaces, labels, room_labels) -> None:
+    """Room labels name the space they fall in (they never create one)."""
+    H, W = labels.shape
+    for name, (x, y) in room_labels or ():
+        xi, yi = int(round(x)), int(round(y))
+        if 0 <= xi < W and 0 <= yi < H and labels[yi, xi] > 0:
+            spaces[labels[yi, xi] - 1].labels.append(name)
+
+
 def reconstruct(image: np.ndarray, room_labels: list | None = None, evidence_image: np.ndarray | None = None) -> PlanModel:
     """`evidence_image` (optional, same frame): the full drawing when `image` is a structural
     rendering (engine.semantic). Walls come from `image`; opening evidence (door leaves, swing
@@ -810,11 +819,7 @@ def reconstruct(image: np.ndarray, room_labels: list | None = None, evidence_ima
     min_area = max(16.0 * t_class * t_class, 0.0008 * H * W)
     spaces, labels = spaces_from(walls, openings, (H, W), min_area, join=0.6 * t_class)
     adjacency = topology(openings, labels)
-    if room_labels:
-        for name, (x, y) in room_labels:
-            xi, yi = int(round(x)), int(round(y))
-            if 0 <= xi < W and 0 <= yi < H and labels[yi, xi] > 0:
-                spaces[labels[yi, xi] - 1].labels.append(name)
+    attach_labels(spaces, labels, room_labels)
     status = "ok" if spaces else ("partial" if walls else "no_structure")
     model = PlanModel(width=W, height=H, walls=walls, openings=openings, spaces=spaces, adjacency=adjacency,
                       annotations={"lattice_strokes": info["lattice"]}, wall_classes=info["classes"], status=status,
