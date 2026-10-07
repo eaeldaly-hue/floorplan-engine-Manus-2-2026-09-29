@@ -231,7 +231,9 @@ function clearFile() {
   state.file = null;
   state.preview = null;
   resetPdf();
+  const cleaning = cleaningOn();
   $('upload-form').reset();
+  $('cleaning-toggle').checked = cleaning;        // a preference, not part of the file form
   $('file-chip').hidden = true;
   $('dropzone').hidden = false;
   $('status-card').hidden = true;
@@ -339,6 +341,7 @@ async function runAnalysis() {
     setStatus('done', 'Analysis complete',
       `${data.room_count} rooms · ${data.opening_count ?? 0} openings · ${(data.warnings || []).length} warnings`);
     $('analyze-label').textContent = 'Analyze again';
+    syncCleaningHint();
   } catch (error) {
     stopTimer();
     setStatus('error', 'Analysis failed', error.message);
@@ -391,6 +394,7 @@ async function runPdfAnalysis() {
   $('analyze-label').textContent = 'Analyze again';
   state.running = false;
   updateButtons();
+  syncCleaningHint();
 }
 
 function showPage(page) {
@@ -399,6 +403,7 @@ function showPage(page) {
   state.activePage = page;
   showResult(result.data, result.elapsedMs);
   renderPageTabs();
+  syncCleaningHint();
 }
 
 function renderPageTabs() {
@@ -478,6 +483,42 @@ fetchHealth().then((health) => {
 viewer.render();
 
 // Architectural Cleaning (experimental): clean the plan before recognition.
+// The choice is remembered (per user, this app) and survives clearing the file and restarts; it
+// applies to the NEXT analysis, so a result that does not match it says so on the Analyze button.
+const CLEANING_KEY = 'floorplan.cleaningFirst';
+
 function cleaningOn() {
   return Boolean(document.getElementById('cleaning-toggle')?.checked);
 }
+
+function saveCleaningChoice() {
+  try { localStorage.setItem(CLEANING_KEY, cleaningOn() ? '1' : '0'); } catch { /* storage unavailable */ }
+}
+
+function restoreCleaningChoice() {
+  const toggle = document.getElementById('cleaning-toggle');
+  if (!toggle) return;
+  try {
+    const saved = localStorage.getItem(CLEANING_KEY);
+    if (saved !== null) toggle.checked = saved === '1';
+  } catch { /* storage unavailable */ }
+}
+
+// When the shown result was analysed with the other setting, the Analyze button says what the next
+// run will do (the Cleaned / Elements views need a run with cleaning).
+function syncCleaningHint() {
+  const result = viewer.result;
+  if (!result || state.running) return;
+  const cleaned = Boolean(result.cleaning);
+  if (cleaningOn() !== cleaned) {
+    $('analyze-label').textContent = cleaningOn() ? 'Analyze again with cleaning' : 'Analyze again without cleaning';
+  } else if (/with(out)? cleaning$/.test($('analyze-label').textContent)) {
+    $('analyze-label').textContent = 'Analyze again';
+  }
+}
+
+restoreCleaningChoice();
+document.getElementById('cleaning-toggle')?.addEventListener('change', () => {
+  saveCleaningChoice();
+  syncCleaningHint();
+});

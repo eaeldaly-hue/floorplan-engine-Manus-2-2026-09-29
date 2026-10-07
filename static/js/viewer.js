@@ -24,6 +24,15 @@ const FALLBACK_SUBTITLES = {
 
 const OPENING_TYPES = { door: 'Door', window: 'Window', opening: 'Unclassified' };
 
+// Why a cleaning view is (not) available: no result yet, analysed without cleaning, or cleaning not
+// applicable to this drawing (the server's reason).
+export function cleaningTabTitle(result, available, help) {
+  if (available) return help;
+  if (!result) return "Tick 'Clean plan first', then analyse a plan.";
+  if (!result.cleaning) return "This result was analysed without cleaning. Tick 'Clean plan first' and click Analyze again.";
+  return `Cleaning was not applicable to this plan: ${result.cleaning.reason || 'no source'}. The original plan was analysed.`;
+}
+
 export function isEstimateMethod(method) {
   return method !== 'wall-region' && method !== 'independent-wall-region';
 }
@@ -425,6 +434,10 @@ export class Viewer {
       const view = button.dataset.view;
       const available = hasResult && view !== 'walls'
         && (!CLEANING_VIEWS[view] || Boolean(this.result?.cleaning?.urls?.[CLEANING_VIEWS[view]]));
+      if (CLEANING_VIEWS[view]) {
+        button.dataset.help ||= button.title;
+        button.title = cleaningTabTitle(this.result, available, button.dataset.help);
+      }
       button.disabled = !available;
       button.classList.toggle('is-active', available && this.mode !== 'original' && button.dataset.view === this.view);
     }
