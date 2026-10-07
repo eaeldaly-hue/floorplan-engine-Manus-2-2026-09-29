@@ -282,6 +282,24 @@ def aggregate(observations: list[Observation], is_vocabulary) -> list[Region]:
 __all__ = ["Observation", "Region", "aggregate", "group_regions", "normalize_reading", "is_noise"]
 
 
+def text_lines_enabled() -> bool:
+    import os
+    return os.environ.get("FLOORPLAN_TEXT_LINES", "on").strip().lower() not in ("off", "0", "no", "false")
+
+
+def text_line_mosaics(image) -> list:
+    import cv2
+    from .text_lines import build_mosaics, find_text_lines
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+    return build_mosaics(gray, find_text_lines(gray))
+
+
+def to_page(*args):
+    from .text_lines import to_page as _to_page
+    return _to_page(*args)
+
+
 def extract_aggregated(image, *, min_confidence: float = 25.0, psms=(11, 6), max_side: int = 5000):
     """Run every OCR pass once, aggregate the evidence, and return
     (accepted OCRBox list, all regions, per-pass summary). No pass is re-run."""
@@ -294,16 +312,40 @@ def extract_aggregated(image, *, min_confidence: float = 25.0, psms=(11, 6), max
     # fixed pass order (variant, rotation, psm), so the evidence is identical to reading them
     # one after another.
     jobs = [(variant, rotation, psm) for variant in variants for rotation in range(4) for psm in psms]
+    # Scale-normalised text lines (engine.analysis.text_lines): every detected line read at its
+    # own optimal glyph height, packed into mosaics; read in the same pool as the page passes.
+    mosaics = text_line_mosaics(image) if text_lines_enabled() else []
+    line_jobs = [(m, psm) for m in range(len(mosaics)) for psm in psms]
 
     def read(job):
+        if job[0] == "lines":
+            m, psm = job[1]
+            return _ocr._read_words(mosaics[m][0], psm=psm, variant_name="text-lines", rotation=0,
+                                    min_confidence=min_confidence)
         variant, rotation, psm = job
         oriented = _ocr.rotate_image(variant.image, rotation)
         return _ocr._read_words(oriented, psm=psm, variant_name=variant.name, rotation=rotation,
                                 min_confidence=min_confidence)
 
-    results = _ocr.run_ocr_tasks(read, jobs)
+    results = _ocr.run_ocr_tasks(read, jobs + [("lines", j) for j in line_jobs])
+    line_results = results[len(jobs):]
+    results = results[:len(jobs)]
     observations: list[Observation] = []
     passes = []
+    for (m, psm), boxes in zip(line_jobs, line_results):
+        mosaic, placements = mosaics[m]
+        kept = 0
+        for b in boxes:
+            hit = to_page(b.x, b.y, b.width, b.height, placements, image.shape)
+            if hit is None:
+                continue
+            x, y, w, h, ln = hit
+            kept += 1
+            observations.append(Observation(text=b.text, norm=normalize_reading(b.text), x=x, y=y, width=w,
+                                            height=h, confidence=b.confidence, variant="text-lines",
+                                            rotation=90 if ln.vertical else 0, psm=psm, kind=b.kind))
+        passes.append({"variant": "text-lines", "rotation": 0, "psm": psm, "words": kept, "mosaic": m,
+                       "score": round(_ocr._configuration_score(boxes, min_confidence=min_confidence), 1)})
     for (variant, rotation, psm), boxes in zip(jobs, results):
         vh, vw = variant.image.shape[:2]
         rh, rw = (vw, vh) if rotation % 2 else (vh, vw)      # shape of the rotated image
@@ -321,6 +363,12 @@ def extract_aggregated(image, *, min_confidence: float = 25.0, psms=(11, 6), max
         return is_room_word(reading) or _ocr.classify_text(reading) == "DIMENSION"
 
     regions = aggregate(observations, vocabulary)
+    for r in regions:
+        # text seen only by the text-line reader is accepted only when it is domain text (a room
+        # term, a dimension, a room number): the new evidence source adds meaning, not noise
+        if r.accepted and all(o.variant == "text-lines" for o in r.observations) \
+                and not (vocabulary(r.norm) or r.norm.replace(" ", "").isdigit()):
+            r.accepted, r.reason = False, "text-line reading only, not vocabulary"
     accepted = []
     for r in regions:
         if not r.accepted:

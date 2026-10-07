@@ -37,7 +37,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 OCR_SOURCES = ("engine/analysis/ocr.py", "engine/analysis/ocr_aggregation.py", "engine/analysis/ocr_preprocessing.py",
-               "engine/analysis/room_lexicon.py", "engine/ocr_runtime.py")
+               "engine/analysis/room_lexicon.py", "engine/ocr_runtime.py", "engine/analysis/text_lines.py")
 
 STATS = {"hits": 0, "misses": 0, "seconds_saved": 0.0, "seconds_reading": 0.0}
 _LOCK = threading.Lock()
@@ -61,6 +61,7 @@ def code_version() -> str:
         from engine.analysis.ocr import configured_ocr_languages, pytesseract
         h.update(str(pytesseract.get_tesseract_version()).encode() if pytesseract else b"no-tesseract")
         h.update(configured_ocr_languages().encode())
+        h.update(os.environ.get("FLOORPLAN_TEXT_LINES", "on").encode())
     except Exception as exc:                       # version unknown -> never share a cache with a known one
         h.update(f"unknown:{type(exc).__name__}".encode())
     return h.hexdigest()[:16]
