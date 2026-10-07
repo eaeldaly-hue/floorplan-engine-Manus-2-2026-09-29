@@ -44,7 +44,7 @@ def category(name: str | None) -> str:
 # variants
 # ---------------------------------------------------------------------------
 
-def _analyze(image, name, evidence, structure_image=None, engine="legacy"):
+def _analyze(image, name, evidence, structure_image=None, engine="legacy", cleaner=None):
     """Production analyzer; returns (response, final structure used for rooms)."""
     from engine import analyzer as analyzer_module
     from engine.analyzer import FloorPlanAnalyzer
@@ -59,7 +59,7 @@ def _analyze(image, name, evidence, structure_image=None, engine="legacy"):
     analyzer_module.plan_adapter.finish = spy
     try:
         result = FloorPlanAnalyzer().analyze(image, name, text_evidence=evidence or None, structure_image=structure_image,
-                                             structure_engine=engine)
+                                             structure_engine=engine, cleaner=cleaner)
     finally:
         analyzer_module.plan_adapter.finish = original
     return result, captured["structure"]
@@ -97,17 +97,17 @@ def variant_d(ctx):
 
 
 def variant_e(ctx):
-    """D + gaps closed where the page draws an opening symbol (Plan Model gap finder)"""
-    from engine.semantic.layer import build_layer
-    from ingest.pdf_vectors import page_paths
+    """Production cleaning path: Architectural Cleaner (vector layer, closures, gap closures) run
+    by the analyzer; openings from the typed elements (engine.arch.openings)"""
+    from engine.cleaning.cleaner import clean
 
-    if "layer_e" not in ctx:
-        ctx["layer_e"] = build_layer(page_paths(ctx["pdf"], ctx["page"], ctx["image"].shape), ctx["image"].shape,
-                                     ctx["evidence"], image=ctx["image"])
-    layer = ctx["layer_e"]
-    if not layer.applicable:
-        return None
-    return _analyze(ctx["image"], ctx["name"], ctx["evidence"], layer.structural_image(closures=True), "legacy")
+    cleaned = {}
+
+    def cleaner():
+        cleaned["r"] = clean(ctx["image"], ctx["pdf"], ctx["page"], ctx["evidence"], mode="on")
+        return cleaned["r"]
+    result = _analyze(ctx["image"], ctx["name"], ctx["evidence"], cleaner=cleaner)
+    return None if not cleaned["r"].applicable else result
 
 
 VARIANTS = {"A": variant_a, "B": variant_b, "C": variant_c, "D": variant_d, "E": variant_e}

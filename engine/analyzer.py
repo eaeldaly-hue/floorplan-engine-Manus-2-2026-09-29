@@ -1406,7 +1406,13 @@ class FloorPlanAnalyzer:
                 + ", ".join(f"'{text}'" for text in rejected_labels[:4])
             )
         spaces = _split_shared_spaces(structure, room_lines, ocr_result)
-        openings = classify_openings(geometry, structure)
+        if cleaned is not None and cleaned.applicable:
+            # the cleaner typed (and sealed) the doors and windows: report those, related to the
+            # final spaces, instead of re-detecting gaps on the sealed plan (engine.arch.openings)
+            from .arch.openings import typed_openings
+            openings = typed_openings(cleaned, structure)
+        else:
+            openings = classify_openings(geometry, structure)
         spaces = _join_open_connections(spaces, room_lines, openings, structure)
 
         rooms, scale, unlabeled = _build_room_records(

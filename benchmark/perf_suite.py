@@ -89,12 +89,11 @@ def run_case(case: str, cleaning: bool) -> dict:
         import ingest.pdf_text as IT
         pt = IT.read_page_text(path, int(page), info.kind)
         evidence = text_boxes(pt, info.width_pt, info.height_pt, image.shape)
-        structure_image = None
-        if cleaning:
+        cleaner = None
+        if cleaning:                              # production path: run by the analyzer, overlapping OCR
             import engine.cleaning.cleaner as CL
-            res = CL.clean(image, path, int(page), evidence, mode="on")
-            structure_image = res.recognition_image if res.applicable else None
-        result = FloorPlanAnalyzer().analyze(image, name, text_evidence=evidence or None, structure_image=structure_image)
+            cleaner = lambda: CL.clean(image, path, int(page), evidence, mode="on")   # noqa: E731
+        result = FloorPlanAnalyzer().analyze(image, name, text_evidence=evidence or None, cleaner=cleaner)
     else:
         image, _ = _decode_upload(path.read_bytes(), name)
         result = FloorPlanAnalyzer().analyze(image, name)
