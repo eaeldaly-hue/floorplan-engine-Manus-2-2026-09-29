@@ -9,6 +9,8 @@ from __future__ import annotations
 import math
 import os
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -16,6 +18,7 @@ import cv2
 import numpy as np
 
 from ..ocr_runtime import configure_tesseract
+from .room_lexicon import is_room_word
 from .ocr_preprocessing import prepare_ocr_variants
 
 try:
@@ -94,6 +97,10 @@ class OCRResult:
     selected_variant: str | None = None
     selected_rotation: int = 0
     selected_psm: int | None = None
+    # Evidence from all passes (engine.analysis.ocr_aggregation): every text region with its
+    # readings, support and accept/reject decision, and a summary of each pass.
+    regions: tuple = ()
+    passes: tuple = ()
 
     @property
     def room_labels(self) -> tuple[OCRBox, ...]:
@@ -111,6 +118,44 @@ class OCRResult:
 # ---------------------------------------------------------------------------
 # Tesseract configuration
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# OCR worker pool
+# ---------------------------------------------------------------------------
+# Every Tesseract read runs as its own single-threaded process (the build has no OpenMP), so
+# the independent reads of a page (the passes of extract_ocr, the dimension retries of its
+# rooms) run concurrently on one pool shared by the whole process; the pool bounds how many
+# Tesseract processes are alive at once. Results come back in submission order, so everything
+# downstream sees exactly the sequential order. FLOORPLAN_OCR_WORKERS=1 reads one at a time.
+
+_POOL: ThreadPoolExecutor | None = None
+_POOL_LOCK = threading.Lock()
+_POOL_PREFIX = "floorplan-ocr"
+DEFAULT_OCR_WORKERS = 8
+
+
+def ocr_workers() -> int:
+    value = os.environ.get("FLOORPLAN_OCR_WORKERS", "").strip()
+    if value.isdigit() and int(value) >= 1:
+        return int(value)
+    return max(1, min(DEFAULT_OCR_WORKERS, os.cpu_count() or 1))
+
+
+def run_ocr_tasks(fn, items) -> list:
+    """[fn(item) for item in items], with the items read concurrently on the OCR pool."""
+    items = list(items)
+    workers = ocr_workers()
+    nested = threading.current_thread().name.startswith(_POOL_PREFIX)   # never wait on the pool from inside it
+    if workers <= 1 or len(items) <= 1 or nested:
+        return [fn(item) for item in items]
+    configured_ocr_languages()          # resolved once, before the reads start
+    global _POOL
+    with _POOL_LOCK:
+        if _POOL is None or _POOL._max_workers != workers:
+            _POOL = ThreadPoolExecutor(max_workers=workers, thread_name_prefix=_POOL_PREFIX)
+        pool = _POOL
+    return list(pool.map(fn, items))
 
 
 @lru_cache(maxsize=1)
@@ -217,7 +262,7 @@ def classify_text(text: str) -> str:
 
     words = re.findall(r"[A-Z]+", normalized)
 
-    if any(word in _COMMON_ROOM_TERMS for word in words):
+    if any(word in _COMMON_ROOM_TERMS or is_room_word(word) for word in words):
         return "ROOM_LABEL"
 
     return "OTHER"
@@ -628,12 +673,12 @@ def extract_ocr(
     max_side: int = 5000,
 ) -> OCRResult:
     """
-    Run robust multi-variant, multi-orientation OCR.
+    Run robust multi-variant, multi-orientation OCR and aggregate the evidence.
 
-    The original image is never modified.
-
-    Returns structured OCR evidence with all coordinates mapped back
-    to the original image.
+    Every pass (preprocessing variant x rotation x PSM) is read once. Instead of keeping the
+    pass with the best global score, all word observations are mapped to original image
+    coordinates, grouped into text regions, and each region is decided on its own evidence
+    (see engine.analysis.ocr_aggregation). The original image is never modified.
     """
     if pytesseract is None:
         return OCRResult(boxes=tuple())
@@ -641,123 +686,60 @@ def extract_ocr(
     if image is None or image.size == 0:
         raise ValueError("Input image is empty.")
 
-    variants, scale_x, scale_y = prepare_ocr_variants(
-        image,
-        max_side=max_side,
+    from .ocr_aggregation import extract_aggregated
+
+    accepted, regions, passes = extract_aggregated(
+        image, min_confidence=min_confidence, psms=psms, max_side=max_side
     )
-
-    best_score = -1.0
-    best_variant: str | None = None
-    best_rotation = 0
-    best_psm: int | None = None
-    best_boxes: list[OCRBox] = []
-
-    for variant in variants:
-        for rotation in range(4):
-            oriented = rotate_image(
-                variant.image,
-                rotation,
-            )
-
-            for psm in psms:
-                boxes = _read_words(
-                    oriented,
-                    psm=psm,
-                    variant_name=variant.name,
-                    rotation=rotation,
-                    min_confidence=min_confidence,
-                )
-
-                score = _configuration_score(
-                    boxes,
-                    min_confidence=min_confidence,
-                )
-
-                if score > best_score:
-                    best_score = score
-                    best_variant = variant.name
-                    best_rotation = rotation
-                    best_psm = psm
-                    best_boxes = boxes
-
-    if not best_boxes:
-        return OCRResult(
-            boxes=tuple(),
-            selected_variant=best_variant,
-            selected_rotation=best_rotation * 90,
-            selected_psm=best_psm,
-        )
-
-    mapped_boxes: list[OCRBox] = []
-
-    # Re-run only the selected configuration so the coordinates are
-    # mapped cleanly to the original source image.
-    selected_variant_image = next(
-        variant.image
-        for variant in variants
-        if variant.name == best_variant
-    )
-
-    oriented = rotate_image(
-        selected_variant_image,
-        best_rotation,
-    )
-
-    selected_boxes = _read_words(
-        oriented,
-        psm=best_psm or 11,
-        variant_name=best_variant or "unknown",
-        rotation=best_rotation,
-        min_confidence=min_confidence,
-    )
-
-    rotated_height, rotated_width = oriented.shape[:2]
-
-    for box in selected_boxes:
-        x, y, width, height = map_box_to_original(
-            box.x,
-            box.y,
-            box.width,
-            box.height,
-            best_rotation,
-            rotated_width,
-            rotated_height,
-            scale_x,
-            scale_y,
-        )
-
-        if width <= 0 or height <= 0:
-            continue
-
-        mapped_boxes.append(
-            OCRBox(
-                text=box.text,
-                x=x,
-                y=y,
-                width=width,
-                height=height,
-                confidence=box.confidence,
-                source=box.source,
-                variant=box.variant,
-                rotation=box.rotation * 90,
-                psm=box.psm,
-                kind=box.kind,
-            )
-        )
-
-    unique_boxes = deduplicate_ocr_boxes(
-        mapped_boxes
-    )
-
+    # For reference only: the configuration that contributed most accepted regions.
+    votes: dict[tuple, int] = {}
+    for region in regions:
+        if region.accepted and region.best is not None:
+            key = (region.best.variant, region.best.rotation, region.best.psm)
+            votes[key] = votes.get(key, 0) + 1
+    top = max(votes, key=votes.get) if votes else (None, 0, None)
+    accepted.sort(key=lambda box: (box.y, box.x))
     return OCRResult(
-        boxes=tuple(unique_boxes),
-        selected_variant=best_variant,
-        selected_rotation=best_rotation * 90,
-        selected_psm=best_psm,
+        boxes=tuple(accepted),
+        selected_variant=top[0],
+        selected_rotation=top[1],
+        selected_psm=top[2],
+        regions=tuple(regions),
+        passes=tuple(passes),
+    )
+
+
+def merge_document_text(document_boxes, ocr_result: OCRResult | None) -> OCRResult:
+    """Combine a document's own text (e.g. a PDF text layer: exact strings and positions) with
+    OCR of the same page. The document text wins wherever both read the same place; OCR keeps
+    everything the document text does not cover (text drawn as strokes, raster drawings)."""
+    document_boxes = tuple(document_boxes)
+    ocr_boxes = ocr_result.boxes if ocr_result is not None else ()
+
+    def covered(box: OCRBox) -> bool:
+        return any(
+            box.x < d.right and d.x < box.right and box.y < d.bottom and d.y < box.bottom
+            for d in document_boxes
+        )
+
+    boxes = list(document_boxes) + [box for box in ocr_boxes if not covered(box)]
+    boxes.sort(key=lambda box: (box.y, box.x))
+    if ocr_result is None:
+        return OCRResult(boxes=tuple(boxes), selected_variant="document-text")
+    return OCRResult(
+        boxes=tuple(boxes),
+        selected_variant=ocr_result.selected_variant,
+        selected_rotation=ocr_result.selected_rotation,
+        selected_psm=ocr_result.selected_psm,
+        regions=ocr_result.regions,
+        passes=ocr_result.passes,
     )
 
 
 __all__ = [
+    "merge_document_text",
+    "run_ocr_tasks",
+    "ocr_workers",
     "OCRLine",
     "OCRBox",
     "OCRResult",

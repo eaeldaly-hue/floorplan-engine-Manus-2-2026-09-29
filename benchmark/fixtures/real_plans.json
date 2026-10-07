@@ -1,0 +1,3972 @@
+{
+ "notes": "Hand-labelled real plans. Coordinates are native image pixels. 'rooms' are points inside each room; rooms sharing a 'group' are one open-plan area and may legitimately be one space. 'openings' (where present) use the same format as test_floorplan_openings.json. Plans live outside the repository: by default '../Test Cases' next to the project (override with FLOORPLAN_REAL_PLANS). 9.png was removed from this set at the user's request and must not be used as a target case. 'printed' is the room name as printed on the drawing (null: the drawing prints no name for that room); semantic room-name metrics use only rooms with a printed name. N.1 benchmark additions: 'openings' for 5.jpeg, 8.png, 11.png, 14.png, 16.png, 19.jpg (kind 'opening' = real but ambiguous opening, e.g. passage or glazed door; it is not counted against door/window precision). 'nonstructural' are points on furniture/fixtures/markers that must not be wall; 'protected' are points on short real structural pieces (piers, stubs, mullions) that must stay wall. These were labelled by hand while viewing engine overlays (engine-assisted), so engine-invisible openings may be under-represented; see per-plan 'gt_notes'. 'physical' (2026-10-06): sharper open-space ground truth from the raw drawings - must_share sets must be one physical space; may_share sets may be one or several; any other two rooms in one space is a false merge.",
+ "plans": {
+  "test_floorplan.png": {
+   "source": "repo",
+   "style": "CAD export, thick solid walls, outline doors, glazing windows",
+   "rooms": [
+    {
+     "name": "Kitchen",
+     "point": [
+      1404,
+      435
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Master bedroom",
+     "point": [
+      2057,
+      439
+     ],
+     "printed": "MASTER BEDROOM"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      646,
+      493
+     ],
+     "group": "open",
+     "printed": "LIVING ROOM"
+    },
+    {
+     "name": "Pantry",
+     "point": [
+      1630,
+      729
+     ],
+     "printed": "PANTRY"
+    },
+    {
+     "name": "Hall",
+     "point": [
+      1553,
+      882
+     ],
+     "group": "open",
+     "printed": "HALL"
+    },
+    {
+     "name": "Room",
+     "point": [
+      2304,
+      928
+     ],
+     "printed": "ROOM"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      2160,
+      1090
+     ],
+     "printed": "BATH"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      1848,
+      1096
+     ],
+     "printed": "CLOSET"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      883,
+      1114
+     ],
+     "printed": "BATH"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      447,
+      1160
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Laundry room",
+     "point": [
+      1550,
+      1164
+     ],
+     "printed": "LAUNDRY ROOM"
+    },
+    {
+     "name": "Hallway",
+     "point": [
+      1260,
+      1273
+     ],
+     "group": "open",
+     "printed": "HALLWAY"
+    },
+    {
+     "name": "Hall",
+     "point": [
+      866,
+      1361
+     ],
+     "group": "open",
+     "printed": "HALL"
+    },
+    {
+     "name": "Office",
+     "point": [
+      934,
+      1704
+     ],
+     "printed": "OFFICE"
+    },
+    {
+     "name": "Garage",
+     "point": [
+      1899,
+      1781
+     ],
+     "printed": "GARAGE"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      436,
+      1804
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Porch",
+     "point": [
+      1292,
+      1858
+     ],
+     "printed": "PORCH"
+    }
+   ],
+   "openings_fixture": "benchmark/fixtures/test_floorplan_openings.json",
+   "physical": {
+    "must_share": [
+     [
+      0,
+      2,
+      4,
+      11,
+      12
+     ]
+    ],
+    "may_share": [],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "2.jpg": {
+   "style": "hand-drawn style; thin (5-6 px) interior walls, thick (12 px) exterior; swing doors; outline-only windows",
+   "rooms": [
+    {
+     "name": "Bedroom",
+     "point": [
+      145,
+      180
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      295,
+      190
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      500,
+      230
+     ],
+     "printed": "Kitchen"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      220,
+      400
+     ],
+     "printed": "Living Room"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      510,
+      450
+     ],
+     "printed": "Bath"
+    }
+   ],
+   "wall_thickness_px": 12,
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      222,
+      203
+     ],
+     "p1": [
+      222,
+      270
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      292,
+      288
+     ],
+     "p1": [
+      358,
+      288
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      375,
+      302
+     ],
+     "p1": [
+      375,
+      370
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      390,
+      397
+     ],
+     "p1": [
+      458,
+      397
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      626,
+      220
+     ],
+     "p1": [
+      626,
+      300
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      253,
+      70
+     ],
+     "p1": [
+      337,
+      70
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      506,
+      68
+     ],
+     "p1": [
+      589,
+      68
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      627,
+      100
+     ],
+     "p1": [
+      627,
+      171
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      78,
+      127
+     ],
+     "p1": [
+      78,
+      230
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      78,
+      348
+     ],
+     "p1": [
+      78,
+      462
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "W6",
+     "kind": "window",
+     "p0": [
+      156,
+      504
+     ],
+     "p1": [
+      271,
+      504
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "W7",
+     "kind": "window",
+     "p0": [
+      517,
+      504
+     ],
+     "p1": [
+      595,
+      504
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      395,
+      70
+     ],
+     "p1": [
+      492,
+      70
+     ],
+     "wall_thickness_px": 12,
+     "note": "open gap in exterior wall"
+    }
+   ],
+   "nonstructural": [],
+   "protected": [
+    {
+     "what": "short wall between window and top gap",
+     "point": [
+      365,
+      70
+     ]
+    },
+    {
+     "what": "pier between window and exterior door",
+     "point": [
+      626,
+      195
+     ]
+    },
+    {
+     "what": "corner piece by window",
+     "point": [
+      612,
+      70
+     ]
+    }
+   ]
+  },
+  "4.jpg": {
+   "style": "thick (13 px) exterior, thin (5 px) interior, grey room fill, swing doors, mullioned windows",
+   "rooms": [
+    {
+     "name": "Bathroom",
+     "point": [
+      110,
+      90
+     ],
+     "printed": "Bathroom"
+    },
+    {
+     "name": "Hall",
+     "point": [
+      150,
+      195
+     ],
+     "group": "open",
+     "printed": "Hall"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      355,
+      160
+     ],
+     "group": "open",
+     "printed": "Kitchen"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      125,
+      280
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      355,
+      410
+     ],
+     "group": "open",
+     "printed": "Living Room"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      125,
+      460
+     ],
+     "printed": "Bedroom"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      152,
+      164
+     ],
+     "p1": [
+      195,
+      164
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      33,
+      173
+     ],
+     "p1": [
+      33,
+      215
+     ],
+     "wall_thickness_px": 13
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      229,
+      310
+     ],
+     "p1": [
+      229,
+      352
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      229,
+      367
+     ],
+     "p1": [
+      229,
+      409
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      432,
+      560
+     ],
+     "p1": [
+      477,
+      560
+     ],
+     "wall_thickness_px": 13
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      33,
+      236
+     ],
+     "p1": [
+      33,
+      291
+     ],
+     "wall_thickness_px": 13
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      33,
+      291
+     ],
+     "p1": [
+      33,
+      347
+     ],
+     "wall_thickness_px": 13
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      76,
+      560
+     ],
+     "p1": [
+      129,
+      560
+     ],
+     "wall_thickness_px": 13
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      137,
+      560
+     ],
+     "p1": [
+      190,
+      560
+     ],
+     "wall_thickness_px": 13
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      276,
+      560
+     ],
+     "p1": [
+      329,
+      560
+     ],
+     "wall_thickness_px": 13
+    },
+    {
+     "id": "W6",
+     "kind": "window",
+     "p0": [
+      335,
+      560
+     ],
+     "p1": [
+      386,
+      560
+     ],
+     "wall_thickness_px": 13
+    }
+   ],
+   "nonstructural": [],
+   "protected": [
+    {
+     "what": "mullion pier between left windows",
+     "point": [
+      33,
+      291
+     ]
+    },
+    {
+     "what": "pier between bottom windows",
+     "point": [
+      133,
+      560
+     ]
+    },
+    {
+     "what": "pier between bottom windows",
+     "point": [
+      332,
+      560
+     ]
+    }
+   ],
+   "physical": {
+    "must_share": [
+     [
+      1,
+      2,
+      4
+     ]
+    ],
+    "may_share": [],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "5.jpeg": {
+   "style": "coloured background, grey walls, furniture icons",
+   "rooms": [
+    {
+     "name": "Washroom",
+     "point": [
+      110,
+      193
+     ],
+     "printed": "Washroom"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      301,
+      262
+     ],
+     "group": "open",
+     "printed": "Living Room"
+    },
+    {
+     "name": "Entry",
+     "point": [
+      210,
+      81
+     ],
+     "group": "open",
+     "printed": null
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      397,
+      148
+     ],
+     "printed": "Kitchen"
+    },
+    {
+     "name": "Study",
+     "point": [
+      571,
+      163
+     ],
+     "printed": "Study"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      154,
+      305
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      409,
+      306
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      525,
+      303
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      476,
+      219
+     ],
+     "group": "open",
+     "printed": null
+    },
+    {
+     "name": "Bath",
+     "point": [
+      602,
+      281
+     ],
+     "printed": null
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      290,
+      50
+     ],
+     "p1": [
+      336,
+      50
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      160,
+      134
+     ],
+     "p1": [
+      160,
+      176
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      170,
+      248
+     ],
+     "p1": [
+      204,
+      248
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      349,
+      246
+     ],
+     "p1": [
+      384,
+      246
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      475,
+      246
+     ],
+     "p1": [
+      510,
+      246
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      580,
+      312
+     ],
+     "p1": [
+      626,
+      312
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      169,
+      50
+     ],
+     "p1": [
+      273,
+      50
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      427,
+      81
+     ],
+     "p1": [
+      465,
+      81
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      517,
+      80
+     ],
+     "p1": [
+      594,
+      80
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      24,
+      134
+     ],
+     "p1": [
+      24,
+      182
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      77,
+      407
+     ],
+     "p1": [
+      189,
+      407
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "W6",
+     "kind": "window",
+     "p0": [
+      366,
+      406
+     ],
+     "p1": [
+      444,
+      406
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      228,
+      406
+     ],
+     "p1": [
+      324,
+      406
+     ],
+     "wall_thickness_px": 10,
+     "note": "glazed sliding door to balcony"
+    },
+    {
+     "id": "O2",
+     "kind": "opening",
+     "p0": [
+      500,
+      406
+     ],
+     "p1": [
+      590,
+      406
+     ],
+     "wall_thickness_px": 10,
+     "note": "glazed door to balcony"
+    },
+    {
+     "id": "O3",
+     "kind": "opening",
+     "p0": [
+      510,
+      192
+     ],
+     "p1": [
+      600,
+      192
+     ],
+     "wall_thickness_px": 10,
+     "note": "study glazed sliding screen"
+    },
+    {
+     "id": "O4",
+     "kind": "opening",
+     "p0": [
+      342,
+      107
+     ],
+     "p1": [
+      342,
+      179
+     ],
+     "wall_thickness_px": 10,
+     "note": "kitchen glazed partition"
+    },
+    {
+     "id": "O5",
+     "kind": "opening",
+     "p0": [
+      343,
+      198
+     ],
+     "p1": [
+      343,
+      243
+     ],
+     "wall_thickness_px": 10,
+     "note": "passage living/corridor"
+    }
+   ],
+   "nonstructural": [
+    {
+     "what": "plant",
+     "point": [
+      181,
+      86
+     ]
+    },
+    {
+     "what": "plant",
+     "point": [
+      220,
+      86
+     ]
+    },
+    {
+     "what": "plant",
+     "point": [
+      253,
+      86
+     ]
+    },
+    {
+     "what": "plant",
+     "point": [
+      177,
+      226
+     ]
+    },
+    {
+     "what": "plant",
+     "point": [
+      510,
+      105
+     ]
+    },
+    {
+     "what": "plant",
+     "point": [
+      604,
+      220
+     ]
+    },
+    {
+     "what": "study desk",
+     "point": [
+      571,
+      136
+     ]
+    },
+    {
+     "what": "kitchen counter",
+     "point": [
+      401,
+      179
+     ]
+    },
+    {
+     "what": "bedside table",
+     "point": [
+      93,
+      265
+     ]
+    },
+    {
+     "what": "bedside table",
+     "point": [
+      117,
+      265
+     ]
+    },
+    {
+     "what": "dresser",
+     "point": [
+      190,
+      340
+     ]
+    },
+    {
+     "what": "sofa",
+     "point": [
+      230,
+      340
+     ]
+    },
+    {
+     "what": "tv unit",
+     "point": [
+      330,
+      340
+     ]
+    },
+    {
+     "what": "bedside table",
+     "point": [
+      420,
+      263
+     ]
+    },
+    {
+     "what": "bedside table",
+     "point": [
+      449,
+      263
+     ]
+    },
+    {
+     "what": "wardrobe",
+     "point": [
+      622,
+      350
+     ]
+    },
+    {
+     "what": "washroom cabinet",
+     "point": [
+      134,
+      223
+     ]
+    },
+    {
+     "what": "chair",
+     "point": [
+      358,
+      311
+     ]
+    },
+    {
+     "what": "study shelf",
+     "point": [
+      618,
+      136
+     ]
+    }
+   ],
+   "protected": [
+    {
+     "what": "stub wall (entry divider)",
+     "point": [
+      279,
+      95
+     ]
+    },
+    {
+     "what": "pier between window and door",
+     "point": [
+      281,
+      50
+     ]
+    },
+    {
+     "what": "corridor wall end",
+     "point": [
+      342,
+      190
+     ]
+    },
+    {
+     "what": "pier between balcony openings",
+     "point": [
+      345,
+      406
+     ]
+    }
+   ],
+   "gt_notes": "Glazed balcony doors / screens / partitions are labelled 'opening' (ambiguous door-vs-window).",
+   "physical": {
+    "must_share": [],
+    "may_share": [
+     [
+      1,
+      2,
+      8
+     ]
+    ],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "6.png": {
+   "style": "thin black walls, two floors",
+   "rooms": [
+    {
+     "name": "Terrace",
+     "point": [
+      300,
+      75
+     ],
+     "printed": "TERRACE"
+    },
+    {
+     "name": "Living/dining",
+     "point": [
+      260,
+      270
+     ],
+     "group": "open",
+     "printed": "LIVING/DINING ROOM"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      420,
+      210
+     ],
+     "printed": "LAUNDRY"
+    },
+    {
+     "name": "WC",
+     "point": [
+      430,
+      295
+     ],
+     "printed": null
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      225,
+      490
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      230,
+      680
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Foyer",
+     "point": [
+      400,
+      620
+     ],
+     "group": "open",
+     "printed": "FOYER"
+    },
+    {
+     "name": "Porch",
+     "point": [
+      405,
+      800
+     ],
+     "printed": "PORCH"
+    },
+    {
+     "name": "Garage",
+     "point": [
+      625,
+      490
+     ],
+     "printed": "GARAGE"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      920,
+      220
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Sitting area",
+     "point": [
+      1110,
+      225
+     ],
+     "group": "up",
+     "printed": "SITTING AREA"
+    },
+    {
+     "name": "Hall",
+     "point": [
+      1130,
+      350
+     ],
+     "group": "up",
+     "printed": "HALL"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      920,
+      370
+     ],
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      930,
+      485
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "WIC",
+     "point": [
+      890,
+      612
+     ],
+     "printed": "W.I.C"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      900,
+      710
+     ],
+     "printed": null
+    },
+    {
+     "name": "Master bedroom",
+     "point": [
+      1080,
+      675
+     ],
+     "printed": "MASTER BEDROOM"
+    }
+   ],
+   "physical": {
+    "must_share": [
+     [
+      1,
+      4
+     ],
+     [
+      10,
+      11
+     ]
+    ],
+    "may_share": [
+     [
+      1,
+      4,
+      6
+     ]
+    ],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "7.png": {
+   "style": "low resolution; 3-4 px exterior, ~2 px interior walls (same as symbol lines)",
+   "rooms": [
+    {
+     "name": "Bonus room",
+     "point": [
+      150,
+      128
+     ],
+     "printed": "Bonus Room"
+    },
+    {
+     "name": "Finished room over garage",
+     "point": [
+      152,
+      265
+     ],
+     "printed": "Finished Room Over Garage"
+    },
+    {
+     "name": "Master suite",
+     "point": [
+      400,
+      58
+     ],
+     "printed": "Second Floor Master Suite"
+    },
+    {
+     "name": "Master bath",
+     "point": [
+      250,
+      36
+     ],
+     "printed": null
+    },
+    {
+     "name": "WIC",
+     "point": [
+      315,
+      93
+     ],
+     "printed": "WIC"
+    },
+    {
+     "name": "Hall",
+     "point": [
+      330,
+      150
+     ],
+     "printed": null
+    },
+    {
+     "name": "Bath",
+     "point": [
+      250,
+      172
+     ],
+     "printed": null
+    },
+    {
+     "name": "Bath",
+     "point": [
+      437,
+      140
+     ],
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      272,
+      230
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      411,
+      223
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "WIC",
+     "point": [
+      342,
+      224
+     ],
+     "printed": "WIC"
+    },
+    {
+     "name": "WIC",
+     "point": [
+      342,
+      264
+     ],
+     "printed": "WIC"
+    }
+   ]
+  },
+  "8.png": {
+   "style": "grey walls, furniture, rotated labels",
+   "rooms": [
+    {
+     "name": "Bedroom 1",
+     "point": [
+      100,
+      150
+     ],
+     "group": "bed1",
+     "printed": "BEDROOM 1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      83,
+      250
+     ],
+     "group": "bed1",
+     "printed": "CLOSET"
+    },
+    {
+     "name": "Bath 2",
+     "point": [
+      213,
+      166
+     ],
+     "printed": "BATH 2"
+    },
+    {
+     "name": "Bedroom 2",
+     "point": [
+      281,
+      102
+     ],
+     "printed": "BEDROOM 2"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      274,
+      246
+     ],
+     "group": "open",
+     "printed": "DINING AREA"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      351,
+      259
+     ],
+     "group": "open",
+     "printed": "LIVING ROOM"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      297,
+      337
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Hall",
+     "point": [
+      215,
+      232
+     ],
+     "group": "open",
+     "printed": null
+    },
+    {
+     "name": "Bath 1",
+     "point": [
+      182,
+      303
+     ],
+     "printed": "BATH 1"
+    }
+   ],
+   "openings": [
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      384,
+      72
+     ],
+     "p1": [
+      384,
+      128
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      46,
+      118
+     ],
+     "p1": [
+      46,
+      174
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      66,
+      40
+     ],
+     "p1": [
+      111,
+      40
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      185,
+      110
+     ],
+     "p1": [
+      206,
+      110
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      438,
+      224
+     ],
+     "p1": [
+      438,
+      272
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "W6",
+     "kind": "window",
+     "p0": [
+      272,
+      391
+     ],
+     "p1": [
+      320,
+      391
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "W7",
+     "kind": "window",
+     "p0": [
+      148,
+      345
+     ],
+     "p1": [
+      195,
+      345
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      438,
+      342
+     ],
+     "p1": [
+      438,
+      384
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      269,
+      171
+     ],
+     "p1": [
+      301,
+      171
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      210,
+      202
+     ],
+     "p1": [
+      241,
+      202
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      196,
+      224
+     ],
+     "p1": [
+      196,
+      254
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      132,
+      258
+     ],
+     "p1": [
+      160,
+      258
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      311,
+      310
+     ],
+     "p1": [
+      343,
+      310
+     ],
+     "wall_thickness_px": 8,
+     "note": "kitchen passage"
+    },
+    {
+     "id": "O2",
+     "kind": "opening",
+     "p0": [
+      49,
+      257
+     ],
+     "p1": [
+      119,
+      257
+     ],
+     "wall_thickness_px": 8,
+     "note": "closet bifold"
+    }
+   ],
+   "nonstructural": [],
+   "protected": [
+    {
+     "what": "short wall stub between bath 2 and bedroom 1 door",
+     "point": [
+      194,
+      213
+     ]
+    }
+   ],
+   "physical": {
+    "must_share": [
+     [
+      4,
+      5
+     ]
+    ],
+    "may_share": [
+     [
+      0,
+      1
+     ],
+     [
+      4,
+      5,
+      6,
+      7
+     ]
+    ],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'.",
+    "corrections": "2026-10-06: Hall point moved from (176,217) to (215,232): the old point lies left of the wall stub, inside the swing of Bedroom 1's door (bedroom floor); the hall is right of the stub, open to the dining area (checked on the raw drawing with a grid)."
+   }
+  },
+  "10.png": {
+   "style": "thin walls, dense small rooms, low resolution",
+   "rooms": [
+    {
+     "name": "Master bedroom",
+     "point": [
+      50,
+      125
+     ],
+     "printed": "MASTER BEDROOM"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      130,
+      115
+     ],
+     "printed": "BATH"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      255,
+      85
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      345,
+      100
+     ],
+     "printed": "LAUNDRY"
+    },
+    {
+     "name": "Storage",
+     "point": [
+      240,
+      130
+     ],
+     "printed": "STORAGE"
+    },
+    {
+     "name": "Office",
+     "point": [
+      280,
+      290
+     ],
+     "printed": "OFFICE"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      180,
+      320
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      60,
+      310
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "WIC",
+     "point": [
+      175,
+      250
+     ],
+     "printed": "W.I.C"
+    },
+    {
+     "name": "Family room",
+     "point": [
+      420,
+      290
+     ],
+     "group": "open",
+     "printed": "FAMILY ROOM"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      450,
+      135
+     ],
+     "group": "open",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      580,
+      95
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      575,
+      265
+     ],
+     "group": "open",
+     "printed": "LIVING ROOM"
+    }
+   ],
+   "physical": {
+    "must_share": [],
+    "may_share": [
+     [
+      9,
+      10,
+      11,
+      12
+     ]
+    ],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "11.png": {
+   "style": "medium black walls, furniture, open plan",
+   "rooms": [
+    {
+     "name": "Bedroom",
+     "point": [
+      152,
+      74
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      246,
+      61
+     ],
+     "printed": "BATH"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      356,
+      76
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Terrace",
+     "point": [
+      152,
+      154
+     ],
+     "printed": "TERRACE"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      156,
+      244
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Foyer",
+     "point": [
+      256,
+      245
+     ],
+     "group": "open",
+     "printed": "FOYER"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      343,
+      218
+     ],
+     "group": "open",
+     "printed": "LIVING ROOM"
+    },
+    {
+     "name": "Hall",
+     "point": [
+      232,
+      107
+     ],
+     "printed": null
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      261,
+      88
+     ],
+     "p1": [
+      283,
+      88
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      288,
+      90
+     ],
+     "p1": [
+      288,
+      119
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      259,
+      121
+     ],
+     "p1": [
+      282,
+      121
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      127,
+      298
+     ],
+     "p1": [
+      152,
+      298
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      248,
+      298
+     ],
+     "p1": [
+      293,
+      298
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      398,
+      100
+     ],
+     "p1": [
+      398,
+      142
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      398,
+      150
+     ],
+     "p1": [
+      398,
+      194
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      140,
+      122
+     ],
+     "p1": [
+      192,
+      122
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      114,
+      192
+     ],
+     "p1": [
+      145,
+      192
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      152,
+      192
+     ],
+     "p1": [
+      184,
+      192
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "W6",
+     "kind": "window",
+     "p0": [
+      298,
+      299
+     ],
+     "p1": [
+      364,
+      299
+     ],
+     "wall_thickness_px": 5
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      96,
+      124
+     ],
+     "p1": [
+      96,
+      189
+     ],
+     "wall_thickness_px": 5,
+     "note": "open terrace edge"
+    },
+    {
+     "id": "O2",
+     "kind": "opening",
+     "p0": [
+      200,
+      124
+     ],
+     "p1": [
+      200,
+      189
+     ],
+     "wall_thickness_px": 5,
+     "note": "terrace glazed door"
+    },
+    {
+     "id": "O3",
+     "kind": "opening",
+     "p0": [
+      200,
+      218
+     ],
+     "p1": [
+      200,
+      296
+     ],
+     "wall_thickness_px": 5,
+     "note": "kitchen/foyer open side"
+    },
+    {
+     "id": "O4",
+     "kind": "opening",
+     "p0": [
+      226,
+      40
+     ],
+     "p1": [
+      261,
+      40
+     ],
+     "wall_thickness_px": 5,
+     "note": "bath compartment double doors"
+    },
+    {
+     "id": "O5",
+     "kind": "opening",
+     "p0": [
+      200,
+      90
+     ],
+     "p1": [
+      200,
+      118
+     ],
+     "wall_thickness_px": 5,
+     "note": "bedroom/corridor passage"
+    }
+   ],
+   "nonstructural": [],
+   "protected": [
+    {
+     "what": "pier between kitchen windows",
+     "point": [
+      148,
+      192
+     ]
+    },
+    {
+     "what": "kitchen wall stub",
+     "point": [
+      200,
+      205
+     ]
+    }
+   ],
+   "physical": {
+    "must_share": [
+     [
+      4,
+      5,
+      6
+     ]
+    ],
+    "may_share": [],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "12.png": {
+   "style": "teal coloured walls",
+   "rooms": [
+    {
+     "name": "Balcony",
+     "point": [
+      300,
+      58
+     ],
+     "printed": "BALCONY"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      218,
+      180
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Living/dining",
+     "point": [
+      354,
+      182
+     ],
+     "group": "open",
+     "printed": "LIVING/DINING ROOM"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      350,
+      325
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      215,
+      335
+     ],
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      223,
+      279
+     ],
+     "printed": null
+    }
+   ],
+   "physical": {
+    "must_share": [],
+    "may_share": [
+     [
+      2,
+      3
+     ]
+    ],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "13.png": {
+   "style": "grey walls with coloured room fills",
+   "rooms": [
+    {
+     "name": "Bedroom",
+     "point": [
+      236,
+      66
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      393,
+      62
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Hall",
+     "point": [
+      313,
+      149
+     ],
+     "printed": "Hall"
+    },
+    {
+     "name": "WIC",
+     "point": [
+      210,
+      160
+     ],
+     "printed": "W.i.c"
+    },
+    {
+     "name": "Master bedroom",
+     "point": [
+      251,
+      293
+     ],
+     "printed": "Master Bedroom"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      370,
+      279
+     ],
+     "printed": "Bath"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      409,
+      355
+     ],
+     "printed": "Bath"
+    }
+   ]
+  },
+  "14.png": {
+   "style": "low resolution, thin walls, many fixtures",
+   "rooms": [
+    {
+     "name": "Outdoor living",
+     "point": [
+      87,
+      35
+     ],
+     "printed": "OUTDOOR LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      137,
+      87
+     ],
+     "group": "open",
+     "printed": "DINING"
+    },
+    {
+     "name": "Great room",
+     "point": [
+      224,
+      47
+     ],
+     "group": "open",
+     "printed": "VAULTED GREAT RM"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      180,
+      240
+     ],
+     "group": "open",
+     "printed": null
+    },
+    {
+     "name": "Master",
+     "point": [
+      333,
+      56
+     ],
+     "printed": "VAULTED MASTER"
+    },
+    {
+     "name": "Master bath",
+     "point": [
+      345,
+      145
+     ],
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      285,
+      235
+     ],
+     "printed": null
+    },
+    {
+     "name": "Toilet",
+     "point": [
+      360,
+      250
+     ],
+     "printed": null
+    },
+    {
+     "name": "Bath",
+     "point": [
+      269,
+      305
+     ],
+     "printed": null
+    },
+    {
+     "name": "Bedroom 2",
+     "point": [
+      344,
+      291
+     ],
+     "printed": "BR. 2"
+    },
+    {
+     "name": "Bedroom 3",
+     "point": [
+      333,
+      418
+     ],
+     "printed": "BR. 3"
+    },
+    {
+     "name": "Garage",
+     "point": [
+      58,
+      247
+     ],
+     "printed": "GARAGE"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      84,
+      153
+     ],
+     "printed": null
+    }
+   ],
+   "openings": [
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      204,
+      14
+     ],
+     "p1": [
+      227,
+      14
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      233,
+      14
+     ],
+     "p1": [
+      256,
+      14
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      310,
+      14
+     ],
+     "p1": [
+      348,
+      14
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      180,
+      26
+     ],
+     "p1": [
+      180,
+      49
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      376,
+      29
+     ],
+     "p1": [
+      376,
+      46
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W6",
+     "kind": "window",
+     "p0": [
+      376,
+      82
+     ],
+     "p1": [
+      376,
+      100
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W7",
+     "kind": "window",
+     "p0": [
+      376,
+      132
+     ],
+     "p1": [
+      376,
+      150
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W8",
+     "kind": "window",
+     "p0": [
+      376,
+      159
+     ],
+     "p1": [
+      376,
+      177
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W9",
+     "kind": "window",
+     "p0": [
+      376,
+      209
+     ],
+     "p1": [
+      376,
+      226
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W10",
+     "kind": "window",
+     "p0": [
+      376,
+      275
+     ],
+     "p1": [
+      376,
+      292
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W11",
+     "kind": "window",
+     "p0": [
+      376,
+      297
+     ],
+     "p1": [
+      376,
+      314
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W12",
+     "kind": "window",
+     "p0": [
+      376,
+      380
+     ],
+     "p1": [
+      376,
+      398
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W13",
+     "kind": "window",
+     "p0": [
+      258,
+      411
+     ],
+     "p1": [
+      275,
+      411
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W14",
+     "kind": "window",
+     "p0": [
+      189,
+      412
+     ],
+     "p1": [
+      206,
+      412
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W15",
+     "kind": "window",
+     "p0": [
+      314,
+      474
+     ],
+     "p1": [
+      332,
+      474
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W16",
+     "kind": "window",
+     "p0": [
+      336,
+      474
+     ],
+     "p1": [
+      354,
+      474
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      134,
+      65
+     ],
+     "p1": [
+      156,
+      65
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      106,
+      91
+     ],
+     "p1": [
+      106,
+      114
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      40,
+      123
+     ],
+     "p1": [
+      62,
+      123
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      78,
+      132
+     ],
+     "p1": [
+      78,
+      174
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      288,
+      143
+     ],
+     "p1": [
+      311,
+      143
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      316,
+      213
+     ],
+     "p1": [
+      316,
+      231
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D7",
+     "kind": "door",
+     "p0": [
+      348,
+      216
+     ],
+     "p1": [
+      348,
+      233
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D8",
+     "kind": "door",
+     "p0": [
+      344,
+      328
+     ],
+     "p1": [
+      374,
+      328
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D9",
+     "kind": "door",
+     "p0": [
+      344,
+      367
+     ],
+     "p1": [
+      373,
+      367
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D10",
+     "kind": "door",
+     "p0": [
+      183,
+      349
+     ],
+     "p1": [
+      213,
+      349
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D11",
+     "kind": "door",
+     "p0": [
+      182,
+      361
+     ],
+     "p1": [
+      182,
+      379
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D12",
+     "kind": "door",
+     "p0": [
+      290,
+      360
+     ],
+     "p1": [
+      307,
+      360
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D13",
+     "kind": "door",
+     "p0": [
+      224,
+      412
+     ],
+     "p1": [
+      241,
+      412
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D14",
+     "kind": "door",
+     "p0": [
+      23,
+      456
+     ],
+     "p1": [
+      168,
+      456
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D15",
+     "kind": "door",
+     "p0": [
+      12,
+      286
+     ],
+     "p1": [
+      12,
+      304
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      45,
+      14
+     ],
+     "p1": [
+      99,
+      14
+     ],
+     "wall_thickness_px": 4,
+     "note": "screened outdoor living"
+    },
+    {
+     "id": "O2",
+     "kind": "opening",
+     "p0": [
+      107,
+      14
+     ],
+     "p1": [
+      161,
+      14
+     ],
+     "wall_thickness_px": 4,
+     "note": "screened outdoor living"
+    },
+    {
+     "id": "O3",
+     "kind": "opening",
+     "p0": [
+      35,
+      19
+     ],
+     "p1": [
+      35,
+      58
+     ],
+     "wall_thickness_px": 4,
+     "note": "screened outdoor living"
+    },
+    {
+     "id": "O4",
+     "kind": "opening",
+     "p0": [
+      324,
+      115
+     ],
+     "p1": [
+      364,
+      115
+     ],
+     "wall_thickness_px": 4,
+     "note": "master/bath passage"
+    },
+    {
+     "id": "O5",
+     "kind": "opening",
+     "p0": [
+      249,
+      248
+     ],
+     "p1": [
+      249,
+      285
+     ],
+     "wall_thickness_px": 4,
+     "note": "gap, no symbol"
+    },
+    {
+     "id": "O6",
+     "kind": "opening",
+     "p0": [
+      216,
+      298
+     ],
+     "p1": [
+      216,
+      339
+     ],
+     "wall_thickness_px": 4,
+     "note": "sliding/pocket door?"
+    },
+    {
+     "id": "O7",
+     "kind": "opening",
+     "p0": [
+      183,
+      446
+     ],
+     "p1": [
+      284,
+      446
+     ],
+     "wall_thickness_px": 4,
+     "note": "open covered porch front"
+    }
+   ],
+   "nonstructural": [],
+   "protected": [
+    {
+     "what": "pier between right windows",
+     "point": [
+      376,
+      155
+     ]
+    },
+    {
+     "what": "pier between right windows",
+     "point": [
+      376,
+      295
+     ]
+    },
+    {
+     "what": "pier between top windows",
+     "point": [
+      230,
+      14
+     ]
+    },
+    {
+     "what": "pier between bottom windows",
+     "point": [
+      334,
+      474
+     ]
+    },
+    {
+     "what": "pier between porch openings",
+     "point": [
+      215,
+      412
+     ]
+    }
+   ],
+   "gt_notes": "Bath 2 / BR 2 Y-junction door is ambiguous and left unlabelled.",
+   "physical": {
+    "must_share": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "may_share": [],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "15.png": {
+   "style": "coloured fills, two levels, cars",
+   "rooms": [
+    {
+     "name": "Laundry",
+     "point": [
+      58,
+      102
+     ],
+     "printed": "L'DRY"
+    },
+    {
+     "name": "WC",
+     "point": [
+      86,
+      91
+     ],
+     "printed": null
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      129,
+      96
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Family",
+     "point": [
+      216,
+      114
+     ],
+     "group": "open",
+     "printed": "FAMILY"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      306,
+      114
+     ],
+     "printed": "DINING"
+    },
+    {
+     "name": "Living",
+     "point": [
+      281,
+      197
+     ],
+     "group": "open",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Garage",
+     "point": [
+      100,
+      259
+     ],
+     "printed": "DOUBLE GARAGE"
+    },
+    {
+     "name": "Bed 4",
+     "point": [
+      241,
+      350
+     ],
+     "printed": "BED 4"
+    },
+    {
+     "name": "Bed 3",
+     "point": [
+      308,
+      350
+     ],
+     "printed": "BED 3"
+    },
+    {
+     "name": "Bed 1",
+     "point": [
+      238,
+      442
+     ],
+     "printed": "BED 1"
+    },
+    {
+     "name": "Bed 2",
+     "point": [
+      308,
+      442
+     ],
+     "printed": "BED 2"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      182,
+      348
+     ],
+     "printed": null
+    },
+    {
+     "name": "Ensuite",
+     "point": [
+      172,
+      466
+     ],
+     "printed": null
+    }
+   ],
+   "physical": {
+    "must_share": [],
+    "may_share": [
+     [
+      2,
+      3,
+      5
+     ]
+    ],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "16.png": {
+   "style": "coloured room fill and sensor dots, legend panel",
+   "rooms": [
+    {
+     "name": "Bedroom",
+     "point": [
+      81,
+      65
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      217,
+      75
+     ],
+     "group": "open",
+     "printed": "Dining Room"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      327,
+      87
+     ],
+     "group": "open",
+     "printed": "Kitchen"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      240,
+      291
+     ],
+     "group": "open",
+     "printed": "Living Room"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      41,
+      116
+     ],
+     "printed": "Closet"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      65,
+      164
+     ],
+     "printed": null
+    },
+    {
+     "name": "Bath",
+     "point": [
+      149,
+      164
+     ],
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      51,
+      216
+     ],
+     "printed": "Closet"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      106,
+      213
+     ],
+     "printed": "Cl."
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      82,
+      298
+     ],
+     "printed": "Bedroom"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      351,
+      220
+     ],
+     "printed": "Closet"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      338,
+      182
+     ],
+     "printed": null
+    }
+   ],
+   "openings": [
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      85,
+      24
+     ],
+     "p1": [
+      124,
+      24
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      329,
+      24
+     ],
+     "p1": [
+      368,
+      24
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      109,
+      354
+     ],
+     "p1": [
+      149,
+      354
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      75,
+      132
+     ],
+     "p1": [
+      99,
+      132
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      30,
+      224
+     ],
+     "p1": [
+      67,
+      224
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      338,
+      199
+     ],
+     "p1": [
+      375,
+      199
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      331,
+      204
+     ],
+     "p1": [
+      331,
+      231
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      324,
+      323
+     ],
+     "p1": [
+      324,
+      350
+     ],
+     "wall_thickness_px": 4
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      293,
+      70
+     ],
+     "p1": [
+      293,
+      100
+     ],
+     "wall_thickness_px": 4,
+     "note": "dining/kitchen passage"
+    },
+    {
+     "id": "O2",
+     "kind": "opening",
+     "p0": [
+      166,
+      226
+     ],
+     "p1": [
+      166,
+      253
+     ],
+     "wall_thickness_px": 4,
+     "note": "bedroom/hall gap"
+    },
+    {
+     "id": "O3",
+     "kind": "opening",
+     "p0": [
+      200,
+      24
+     ],
+     "p1": [
+      237,
+      24
+     ],
+     "wall_thickness_px": 4,
+     "note": "orange-drawn element on dining wall"
+    }
+   ],
+   "nonstructural": [
+    {
+     "what": "sensor dot",
+     "point": [
+      101,
+      38
+     ]
+    },
+    {
+     "what": "sensor dot",
+     "point": [
+      218,
+      38
+     ]
+    },
+    {
+     "what": "sensor dot",
+     "point": [
+      340,
+      38
+     ]
+    },
+    {
+     "what": "sensor dot",
+     "point": [
+      377,
+      53
+     ]
+    },
+    {
+     "what": "sensor dot",
+     "point": [
+      129,
+      342
+     ]
+    },
+    {
+     "what": "sensor dot",
+     "point": [
+      186,
+      342
+     ]
+    },
+    {
+     "what": "sensor dot",
+     "point": [
+      247,
+      342
+     ]
+    }
+   ],
+   "protected": [
+    {
+     "what": "wall above dining/kitchen passage",
+     "point": [
+      293,
+      50
+     ]
+    },
+    {
+     "what": "wall below dining/kitchen passage",
+     "point": [
+      293,
+      115
+     ]
+    }
+   ],
+   "gt_notes": "One bedroom door is ambiguous (symbol partly hidden) and left unlabelled; O3 is an orange element whose nature is unclear.",
+   "physical": {
+    "must_share": [
+     [
+      1,
+      3
+     ]
+    ],
+    "may_share": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "19.jpg": {
+   "style": "high resolution, thick walls, furniture",
+   "rooms": [
+    {
+     "name": "Gym",
+     "point": [
+      708,
+      1082
+     ],
+     "printed": "Gym"
+    },
+    {
+     "name": "Storage",
+     "point": [
+      1831,
+      514
+     ],
+     "printed": "Storage"
+    },
+    {
+     "name": "Mudroom",
+     "point": [
+      1862,
+      978
+     ],
+     "printed": "Mudroom"
+    },
+    {
+     "name": "Garage",
+     "point": [
+      2609,
+      1280
+     ],
+     "printed": "Garage"
+    },
+    {
+     "name": "Theater",
+     "point": [
+      1763,
+      1860
+     ],
+     "printed": "Theater"
+    },
+    {
+     "name": "Wellness spa",
+     "point": [
+      741,
+      1635
+     ],
+     "printed": "Wellness Spa"
+    },
+    {
+     "name": "Steam shower",
+     "point": [
+      502,
+      1925
+     ],
+     "printed": "Steam Shower"
+    },
+    {
+     "name": "Sauna",
+     "point": [
+      722,
+      1903
+     ],
+     "printed": "Sauna"
+    },
+    {
+     "name": "Jacuzzi",
+     "point": [
+      1012,
+      1932
+     ],
+     "printed": "Sunken Jacuzzi"
+    },
+    {
+     "name": "Elev. mech",
+     "point": [
+      712,
+      1381
+     ],
+     "printed": "Elev. Mech./Storage"
+    },
+    {
+     "name": "Elevator",
+     "point": [
+      949,
+      1381
+     ],
+     "printed": "Elevator"
+    },
+    {
+     "name": "Mech/storage",
+     "point": [
+      1300,
+      1739
+     ],
+     "printed": "Mech./Storage"
+    },
+    {
+     "name": "A/V",
+     "point": [
+      1140,
+      1200
+     ],
+     "printed": "A/V"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      1426,
+      1178
+     ],
+     "p1": [
+      1426,
+      1404
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      326,
+      1280
+     ],
+     "p1": [
+      552,
+      1280
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      680,
+      1280
+     ],
+     "p1": [
+      781,
+      1280
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      1074,
+      1322
+     ],
+     "p1": [
+      1074,
+      1441
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      1236,
+      1494
+     ],
+     "p1": [
+      1355,
+      1494
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      3076,
+      1452
+     ],
+     "p1": [
+      3076,
+      1584
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D7",
+     "kind": "door",
+     "p0": [
+      314,
+      1806
+     ],
+     "p1": [
+      393,
+      1806
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D8",
+     "kind": "door",
+     "p0": [
+      461,
+      1806
+     ],
+     "p1": [
+      561,
+      1806
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D9",
+     "kind": "door",
+     "p0": [
+      675,
+      1806
+     ],
+     "p1": [
+      778,
+      1806
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D10",
+     "kind": "door",
+     "p0": [
+      925,
+      1806
+     ],
+     "p1": [
+      1097,
+      1806
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D11",
+     "kind": "door",
+     "p0": [
+      2280,
+      2075
+     ],
+     "p1": [
+      2945,
+      2075
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D12",
+     "kind": "door",
+     "p0": [
+      1070,
+      880
+     ],
+     "p1": [
+      1070,
+      1115
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D13",
+     "kind": "door",
+     "p0": [
+      2140,
+      870
+     ],
+     "p1": [
+      2140,
+      1100
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "D14",
+     "kind": "door",
+     "p0": [
+      1210,
+      880
+     ],
+     "p1": [
+      1335,
+      880
+     ],
+     "wall_thickness_px": 34
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      1210,
+      1132
+     ],
+     "p1": [
+      1412,
+      1132
+     ],
+     "wall_thickness_px": 34,
+     "note": "hall passage beside A/V"
+    }
+   ],
+   "nonstructural": [],
+   "protected": [
+    {
+     "what": "A/V room top wall",
+     "point": [
+      1140,
+      1125
+     ]
+    },
+    {
+     "what": "elevator/mech divider",
+     "point": [
+      875,
+      1400
+     ]
+    },
+    {
+     "what": "steam shower divider",
+     "point": [
+      420,
+      1950
+     ]
+    },
+    {
+     "what": "storage niche wall",
+     "point": [
+      1730,
+      830
+     ]
+    }
+   ],
+   "gt_notes": "Storage door left unlabelled (ambiguous). D12-D14 are approximate (engine produced no candidate there; placed by eye)."
+  },
+  "20.jpg": {
+   "style": "very high resolution, thin walls, open plan",
+   "rooms": [
+    {
+     "name": "Living room",
+     "point": [
+      1709,
+      680
+     ],
+     "group": "open",
+     "printed": "LIVING ROOM"
+    },
+    {
+     "name": "Breakfast nook",
+     "point": [
+      2391,
+      391
+     ],
+     "group": "open",
+     "printed": "BREAKFAST NOOK"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2409,
+      903
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2080,
+      1609
+     ],
+     "group": "open",
+     "printed": "DINING AREA"
+    },
+    {
+     "name": "Foyer",
+     "point": [
+      1489,
+      2277
+     ],
+     "group": "open",
+     "printed": "FOYER"
+    },
+    {
+     "name": "WIC",
+     "point": [
+      1426,
+      1329
+     ],
+     "printed": "W.I.C"
+    },
+    {
+     "name": "Pantry",
+     "point": [
+      2600,
+      1129
+     ],
+     "printed": "PANTRY"
+    },
+    {
+     "name": "Bath",
+     "point": [
+      1829,
+      2329
+     ],
+     "printed": "BATH"
+    },
+    {
+     "name": "Office",
+     "point": [
+      2329,
+      2194
+     ],
+     "printed": "OFFICE"
+    }
+   ],
+   "physical": {
+    "must_share": [
+     [
+      0,
+      1,
+      2,
+      3,
+      4
+     ]
+    ],
+    "may_share": [],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'."
+   }
+  },
+  "21.png": {
+   "style": "furniture-heavy, medium walls",
+   "rooms": [
+    {
+     "name": "Bedroom",
+     "point": [
+      160,
+      144
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      316,
+      144
+     ],
+     "printed": "LIVING ROOM"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      333,
+      229
+     ],
+     "printed": "BATHROOM"
+    },
+    {
+     "name": "Hallway",
+     "point": [
+      242,
+      229
+     ],
+     "group": "hall",
+     "printed": "HALLWAY"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      151,
+      312
+     ],
+     "group": "open",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      151,
+      420
+     ],
+     "group": "open",
+     "printed": "DINING ROOM"
+    },
+    {
+     "name": "Family room",
+     "point": [
+      187,
+      529
+     ],
+     "group": "open",
+     "printed": "FAMILY ROOM"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      313,
+      336
+     ],
+     "printed": "BEDROOM"
+    },
+    {
+     "name": "Foyer",
+     "point": [
+      311,
+      444
+     ],
+     "group": "hall",
+     "printed": "FOYER"
+    },
+    {
+     "name": "Hallway",
+     "point": [
+      233,
+      363
+     ],
+     "group": "hall",
+     "printed": "HALLWAY"
+    },
+    {
+     "name": "Stair hall",
+     "point": [
+      141,
+      229
+     ],
+     "group": "hall",
+     "printed": null
+    }
+   ],
+   "physical": {
+    "must_share": [
+     [
+      3,
+      9
+     ]
+    ],
+    "may_share": [
+     [
+      3,
+      8,
+      9,
+      10
+     ],
+     [
+      4,
+      5,
+      6
+     ]
+    ],
+    "source": "labelled from the raw drawing only (2026-10-06): must_share = zones with no wall between them (only furniture / counters / wide door-less openings); may_share = zones joined by a doorway or a cased opening in a real wall (one or several spaces both acceptable). Indices into 'rooms'.",
+    "corrections": "2026-10-06: Kitchen/Dining/Family moved from must_share to may_share - a real wall with a door-sized opening separates Kitchen and Dining (checked at full resolution)."
+   }
+  },
+  "3.jpeg": {
+   "style": "3D rendered illustration (out of scope for a 2D plan engine)",
+   "out_of_scope": true,
+   "rooms": []
+  },
+  "1.avif": {
+   "style": "AVIF file",
+   "format_only": true,
+   "rooms": []
+  },
+  "17.webp": {
+   "style": "WEBP file",
+   "format_only": true,
+   "rooms": []
+  },
+  "18.avif": {
+   "style": "AVIF file",
+   "format_only": true,
+   "rooms": []
+  }
+ }
+}

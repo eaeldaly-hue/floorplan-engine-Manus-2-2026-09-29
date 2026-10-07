@@ -1,14 +1,11 @@
 """
-Floor plan engine - entry point.
+Floor plan engine - command-line geometry pipeline (no OCR).
 
-Pipeline: image -> wall mask -> wall segments (with real thickness) ->
-room mask (doors/windows bridged) -> enclosed rooms.
+Pipeline: image -> wall mask -> wall bands -> wall gaps (opening candidates)
+-> sealed spaces -> topology -> door/window classification.
 
-This replaced an earlier version that ran two unfinished, disconnected
-detection systems side by side (a fragile Hough-line pipeline in
-`geometry/`, and a half-wired region-based system in `structural/` that
-was never actually called from here). See MIGRATION_NOTES.md for what
-changed and why.
+Uses the same engine.structure pass as the web analyzer, so the CLI and
+the app agree on walls, spaces and openings.
 """
 
 import json
@@ -17,20 +14,18 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from engine.walls.mask import WallMaskBuilder
-from engine.walls.segments import WallSegmentExtractor
-from engine.walls.room_mask import RoomMaskBuilder
-from engine.rooms.detect import RoomDetector
+from engine.opening_detection import classify_openings, draw_openings_overlay
+from engine.structure import analyze_structure
 
 
 IMAGE_PATH = "test_floorplan.png"
 OUTPUT_DIR = Path("output")
 
 
-def _draw_walls(image, segments):
+def _draw_walls(image, bands):
     vis = image.copy()
-    for s in segments:
-        cv2.line(vis, s["start"], s["end"], (0, 0, 255), max(2, int(s["thickness"] / 6)))
+    for band in bands:
+        cv2.line(vis, tuple(map(int, band.p0)), tuple(map(int, band.p1)), (0, 0, 255), max(2, int(band.thickness / 6)))
     return vis
 
 
@@ -39,10 +34,7 @@ def _draw_rooms(image, rooms):
     for room in rooms:
         polygon = np.array(room["polygon"], dtype=np.int32)
         cv2.polylines(vis, [polygon], True, (0, 140, 255), 4)
-        cv2.putText(
-            vis, room["id"], room["center"],
-            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2, cv2.LINE_AA,
-        )
+        cv2.putText(vis, room["id"], room["center"], cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2, cv2.LINE_AA)
     return vis
 
 
@@ -50,61 +42,38 @@ def run(image_path=IMAGE_PATH, output_dir=OUTPUT_DIR):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    image = cv2.imread(image_path)
+    image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError(f"Could not read image: {image_path}")
     print(f"Loaded {image_path} ({image.shape[1]}x{image.shape[0]})")
 
-    # 1. Wall mask: thick, solid strokes only (text/door-swings/window
-    # ticks are thin and get filtered out by design, not by a fixed
-    # pixel count - see WallMaskBuilder for why).
-    wall_mask = WallMaskBuilder(image).build()
-    cv2.imwrite(str(output_dir / "wall_mask.png"), wall_mask)
+    structure = analyze_structure(image)
+    cv2.imwrite(str(output_dir / "wall_mask.png"), structure.wall_mask)
+    cv2.imwrite(str(output_dir / "room_mask.png"), structure.sealed_mask)
+    print(f"Wall bands: {len(structure.bands)} (typical thickness {structure.wall_thickness:.0f}px)")
+    cv2.imwrite(str(output_dir / "wall_segments.png"), _draw_walls(image, structure.bands))
 
-    # 2. Wall segments: row/column run-scanning, immune to the T/L
-    # junction problem that breaks connected-components extraction.
-    segments = WallSegmentExtractor(wall_mask).detect()
-    print(f"Wall segments detected: {len(segments)}")
-
-    cv2.imwrite(
-        str(output_dir / "wall_segments.png"),
-        _draw_walls(image, segments),
-    )
-
-    # 3. Room mask: same segments, but with door/window-sized gaps
-    # bridged so a real room doesn't leak into its neighbour through an
-    # open doorway. A separate, capped pass seals the true exterior
-    # silhouette even where it's drawn with an unusually faint line.
-    room_mask_builder = RoomMaskBuilder(segments, wall_mask.shape, source_image=image)
-    room_mask = room_mask_builder.build()
-    cv2.imwrite(str(output_dir / "room_mask.png"), room_mask)
-
-    if room_mask_builder.last_unsealed_gap:
-        print(
-            f"WARNING: a {room_mask_builder.last_unsealed_gap}px gap in the "
-            "drawing was too wide to safely auto-bridge (likely a faint "
-            "line or an open-concept boundary). Any room that opens onto "
-            "it will read as merged with the outside. See MIGRATION_NOTES.md."
-        )
-
-    # 4. Rooms: flood fill from outside the closed room mask.
-    rooms = RoomDetector(room_mask).detect()
+    rooms = [{**space, "id": f"room_{k}"} for k, space in enumerate(structure.spaces, 1)]
     print(f"Rooms detected: {len(rooms)}")
     for room in rooms:
-        print(
-            f"  {room['id']} | center={room['center']} | "
-            f"area_px={room['area_pixels']}"
-        )
+        print(f"  {room['id']} | center={room['center']} | area_px={room['area_pixels']}")
+    cv2.imwrite(str(output_dir / "detected_rooms.png"), _draw_rooms(image, rooms))
 
-    cv2.imwrite(
-        str(output_dir / "detected_rooms.png"),
-        _draw_rooms(image, rooms),
-    )
+    openings = classify_openings(image, structure)
+    counts = {kind: sum(o["type"] == kind for o in openings) for kind in ("door", "window", "opening")}
+    print(f"Openings: {len(openings)} ({counts['door']} doors, {counts['window']} windows, {counts['opening']} unknown)")
+    (output_dir / "openings.png").write_bytes(draw_openings_overlay(image, openings))
 
     result = {
         "image": str(image_path),
-        "wall_segments": segments,
+        "wall_segments": [
+            {"orientation": b.orientation, "start": [round(b.p0[0]), round(b.p0[1])], "end": [round(b.p1[0]), round(b.p1[1])],
+             "length": round(float(np.hypot(b.p1[0] - b.p0[0], b.p1[1] - b.p0[1])), 1), "thickness": round(b.thickness, 1)}
+            for b in structure.bands
+        ],
         "rooms": rooms,
+        "openings": openings,
+        "room_adjacency": sorted([list(p) for p in structure.wall_adjacency]),
     }
     with open(output_dir / "result.json", "w") as f:
         json.dump(result, f, indent=2)

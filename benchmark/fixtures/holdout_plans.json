@@ -1,0 +1,5177 @@
+{
+ "notes": "Sealed real-plan hold-out set (N.3a). Full protocol, ground-truth schema and metric definitions: docs/HOLDOUT_PROTOCOL.md. Plans live outside the repository in '../Test Cases Holdout' (override with FLOORPLAN_HOLDOUT_PLANS). Never used for development, tuning or debugging; labelled once from the raw images with a coordinate grid only (no engine output, no OCR); frozen with `python -m benchmark.real_plans --holdout --freeze` before the first engine run. Schema: 'spaces' (physical spaces: id, kind, points), 'rooms' (functional rooms / zones: name, printed, point, space), 'openings', 'nonstructural' (kind, what, point, optional bbox), 'protected', 'style', 'gt_notes'. Physical space != functional room / zone.",
+ "plans": {
+  "pdf/01.pdf": {
+   "file": "pdf/01.pdf",
+   "page": 1,
+   "holdout_input": true,
+   "style": "vector CAD PDF (planning drawing, 1:50 @ A3) rendered at 150 DPI, 2481x1755; solid grey walls with black outline; new partitions drawn as thin blue double lines; grey roof areas of the floor below outside the walls",
+   "gt_notes": "Labelled from the rendered page only. The grey areas with blue / dashed outlines outside the first-floor walls (top: flat roof with three roof lights; left and bottom: roofs/footprint below) are not spaces of this floor. Ensuite entrance has no door symbol (labelled as 'opening'). Title block, note box and scale bar are outside the plan.",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "wet",
+     "points": [
+      [
+       1000,
+       700
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "circulation",
+     "points": [
+      [
+       942,
+       874
+      ],
+      [
+       1100,
+       1050
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "room",
+     "points": [
+      [
+       1414,
+       765
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "room",
+     "points": [
+      [
+       1414,
+       1215
+      ]
+     ]
+    },
+    {
+     "id": "S5",
+     "kind": "room",
+     "points": [
+      [
+       1008,
+       1326
+      ]
+     ]
+    },
+    {
+     "id": "S6",
+     "kind": "room",
+     "points": [
+      [
+       663,
+       1205
+      ],
+      [
+       790,
+       1000
+      ]
+     ]
+    },
+    {
+     "id": "S7",
+     "kind": "wet",
+     "points": [
+      [
+       583,
+       911
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Bath",
+     "printed": "Bath",
+     "point": [
+      1000,
+      680
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Landing",
+     "printed": "Landing",
+     "point": [
+      948,
+      875
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Bedroom",
+     "printed": "Bed 4",
+     "point": [
+      1414,
+      765
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "Bedroom",
+     "printed": "Bed 1",
+     "point": [
+      1414,
+      1215
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "Bedroom",
+     "printed": "Bed 3",
+     "point": [
+      1008,
+      1326
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Bedroom",
+     "printed": "Bed 2",
+     "point": [
+      663,
+      1205
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Ensuite",
+     "printed": "Ensuite",
+     "point": [
+      613,
+      866
+     ],
+     "space": "S7"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      978,
+      811
+     ],
+     "p1": [
+      1070,
+      811
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      1224,
+      845
+     ],
+     "p1": [
+      1224,
+      939
+     ],
+     "wall_thickness_px": 14
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      1161,
+      1031
+     ],
+     "p1": [
+      1161,
+      1121
+     ],
+     "wall_thickness_px": 13
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      1045,
+      1170
+     ],
+     "p1": [
+      1139,
+      1170
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      844,
+      819
+     ],
+     "p1": [
+      844,
+      911
+     ],
+     "wall_thickness_px": 15
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      718,
+      915
+     ],
+     "p1": [
+      718,
+      1000
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      924,
+      569
+     ],
+     "p1": [
+      1073,
+      569
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      1306,
+      569
+     ],
+     "p1": [
+      1520,
+      569
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      533,
+      799
+     ],
+     "p1": [
+      618,
+      799
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      732,
+      799
+     ],
+     "p1": [
+      806,
+      799
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      554,
+      1405
+     ],
+     "p1": [
+      778,
+      1405
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W6",
+     "kind": "window",
+     "p0": [
+      893,
+      1484
+     ],
+     "p1": [
+      1046,
+      1484
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W7",
+     "kind": "window",
+     "p0": [
+      1218,
+      1484
+     ],
+     "p1": [
+      1511,
+      1484
+     ],
+     "wall_thickness_px": 40
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "stairs",
+     "what": "stair run",
+     "point": [
+      910,
+      1050
+     ],
+     "bbox": [
+      854,
+      928,
+      964,
+      1162
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "bath tub",
+     "point": [
+      900,
+      700
+     ],
+     "bbox": [
+      856,
+      595,
+      943,
+      794
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "shower tray",
+     "point": [
+      1150,
+      760
+     ],
+     "bbox": [
+      1088,
+      707,
+      1216,
+      806
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "WC",
+     "point": [
+      1170,
+      655
+     ],
+     "bbox": [
+      1139,
+      626,
+      1216,
+      682
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "basin",
+     "point": [
+      1000,
+      620
+     ],
+     "bbox": [
+      968,
+      595,
+      1036,
+      643
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "ensuite WC",
+     "point": [
+      535,
+      970
+     ],
+     "bbox": [
+      509,
+      949,
+      561,
+      990
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "ensuite basin",
+     "point": [
+      526,
+      893
+     ],
+     "bbox": [
+      506,
+      862,
+      546,
+      924
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "ensuite shower",
+     "point": [
+      680,
+      870
+     ],
+     "bbox": [
+      639,
+      819,
+      717,
+      924
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "wardrobe",
+     "point": [
+      600,
+      1055
+     ],
+     "bbox": [
+      490,
+      1023,
+      725,
+      1085
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed",
+     "point": [
+      645,
+      1235
+     ],
+     "bbox": [
+      558,
+      1147,
+      732,
+      1324
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bedside units",
+     "point": [
+      524,
+      1235
+     ],
+     "bbox": [
+      496,
+      1147,
+      552,
+      1321
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "desk",
+     "point": [
+      805,
+      1235
+     ],
+     "bbox": [
+      775,
+      1147,
+      834,
+      1324
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "wardrobe outline (bed 3)",
+     "point": [
+      913,
+      1235
+     ],
+     "bbox": [
+      854,
+      1176,
+      972,
+      1293
+     ]
+    }
+   ],
+   "protected": []
+  },
+  "pdf/02.pdf": {
+   "file": "pdf/02.pdf",
+   "page": 1,
+   "holdout_input": true,
+   "style": "vector CAD permit sheet (1/4\"=1'-0\", 36x24 in) rendered at 150 DPI, 5398x3598; two plans side by side (basement, first floor); hollow double-line frame walls, hatched concrete basement walls, dense dimension strings, notes column, wall details and title block",
+   "roi": [
+    [
+     800,
+     760,
+     2130,
+     2560
+    ],
+    [
+     2590,
+     760,
+     3580,
+     1160
+    ],
+    [
+     2440,
+     1160,
+     3580,
+     2770
+    ]
+   ],
+   "gt_notes": "Labelled regions (roi): the two plans; the notes column, wall/stair details, legend and title block are outside. First floor: kitchen, dining and living share one space (the columns stand free; the line through them is a beam line). The stair is enclosed (wall on the living side) with a door at its landing: labelled as its own space; the basement stair enclosure likewise. Exterior bulkhead stair labelled as 'other'. Windows labelled only where the wall break is clear; the top kitchen wall windows are not labelled. Basement lally columns and the two Doric columns are protected structure. The first-floor region excludes the exterior bulkhead hatch drawn beside the plan (it is the bulkhead stair S2 seen from above).",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "room",
+     "points": [
+      [
+       1570,
+       1635
+      ],
+      [
+       1400,
+       1100
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "other",
+     "points": [
+      [
+       1000,
+       1080
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "other",
+     "points": [
+      [
+       1940,
+       2050
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "open_plan",
+     "points": [
+      [
+       3071,
+       1192
+      ],
+      [
+       2699,
+       1463
+      ],
+      [
+       2888,
+       2100
+      ],
+      [
+       3310,
+       1950
+      ]
+     ]
+    },
+    {
+     "id": "S5",
+     "kind": "wet",
+     "points": [
+      [
+       3326,
+       1568
+      ]
+     ]
+    },
+    {
+     "id": "S6",
+     "kind": "circulation",
+     "points": [
+      [
+       3450,
+       1721
+      ]
+     ]
+    },
+    {
+     "id": "S7",
+     "kind": "outdoor",
+     "points": [
+      [
+       3131,
+       2591
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Basement",
+     "printed": "BASEMENT",
+     "point": [
+      1570,
+      1635
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Stair",
+     "printed": null,
+     "point": [
+      1000,
+      1080
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Stair",
+     "printed": null,
+     "point": [
+      1940,
+      2050
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "Kitchen",
+     "printed": "KITCHEN",
+     "point": [
+      3071,
+      1192
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "Dining",
+     "printed": "DINING AREA",
+     "point": [
+      2699,
+      1463
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "Living room",
+     "printed": "LIVING AREA",
+     "point": [
+      2888,
+      2100
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "Bath",
+     "printed": null,
+     "point": [
+      3326,
+      1568
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Stair",
+     "printed": null,
+     "point": [
+      3450,
+      1721
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Deck",
+     "printed": "DECK",
+     "point": [
+      3131,
+      2591
+     ],
+     "space": "S7"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      2710,
+      812
+     ],
+     "p1": [
+      2903,
+      812
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      3303,
+      1662
+     ],
+     "p1": [
+      3445,
+      1662
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      3379,
+      1674
+     ],
+     "p1": [
+      3379,
+      1780
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      3303,
+      2460
+     ],
+     "p1": [
+      3415,
+      2460
+     ],
+     "wall_thickness_px": 15
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      1112,
+      1027
+     ],
+     "p1": [
+      1112,
+      1135
+     ],
+     "wall_thickness_px": 25
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      1895,
+      1793
+     ],
+     "p1": [
+      2003,
+      1793
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      2600,
+      1850
+     ],
+     "p1": [
+      2600,
+      1933
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      2600,
+      2203
+     ],
+     "p1": [
+      2600,
+      2321
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      2720,
+      2457
+     ],
+     "p1": [
+      2832,
+      2457
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      1112,
+      1885
+     ],
+     "p1": [
+      1112,
+      1985
+     ],
+     "wall_thickness_px": 25
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      1112,
+      2223
+     ],
+     "p1": [
+      1112,
+      2318
+     ],
+     "wall_thickness_px": 25
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "counter",
+     "what": "kitchen island",
+     "point": [
+      3069,
+      1209
+     ],
+     "bbox": [
+      2918,
+      1116,
+      3220,
+      1302
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "kitchen counter (top)",
+     "point": [
+      3200,
+      873
+     ],
+     "bbox": [
+      2918,
+      834,
+      3518,
+      913
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "kitchen counter (right)",
+     "point": [
+      3478,
+      1070
+     ],
+     "bbox": [
+      3439,
+      834,
+      3518,
+      1307
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "pantry cabinet",
+     "point": [
+      2657,
+      973
+     ],
+     "bbox": [
+      2622,
+      834,
+      2692,
+      1113
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "fridge",
+     "point": [
+      3476,
+      1365
+     ],
+     "bbox": [
+      3434,
+      1307,
+      3518,
+      1423
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "shelves (by bath)",
+     "point": [
+      3220,
+      1592
+     ],
+     "bbox": [
+      3185,
+      1492,
+      3256,
+      1692
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "coat closet",
+     "point": [
+      3467,
+      2375
+     ],
+     "bbox": [
+      3415,
+      2290,
+      3520,
+      2460
+     ]
+    },
+    {
+     "kind": "stairs",
+     "what": "stair (first floor)",
+     "point": [
+      3447,
+      2000
+     ],
+     "bbox": [
+      3374,
+      1780,
+      3520,
+      2227
+     ]
+    },
+    {
+     "kind": "stairs",
+     "what": "stair (basement)",
+     "point": [
+      1940,
+      2000
+     ],
+     "bbox": [
+      1878,
+      1793,
+      2003,
+      2210
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "furnace",
+     "point": [
+      1947,
+      1506
+     ],
+     "bbox": [
+      1900,
+      1460,
+      1995,
+      1552
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "water heater",
+     "point": [
+      1964,
+      1614
+     ],
+     "bbox": [
+      1933,
+      1585,
+      1995,
+      1643
+     ]
+    },
+    {
+     "kind": "hatching",
+     "what": "decking",
+     "point": [
+      3050,
+      2600
+     ],
+     "bbox": [
+      2605,
+      2470,
+      3509,
+      2726
+     ]
+    }
+   ],
+   "protected": [
+    {
+     "what": "lally column",
+     "point": [
+      1715,
+      1202
+     ]
+    },
+    {
+     "what": "lally column",
+     "point": [
+      1715,
+      1557
+     ]
+    },
+    {
+     "what": "lally column",
+     "point": [
+      1715,
+      1913
+     ]
+    },
+    {
+     "what": "lally column",
+     "point": [
+      1715,
+      2240
+     ]
+    },
+    {
+     "what": "Doric column",
+     "point": [
+      3215,
+      1915
+     ]
+    },
+    {
+     "what": "Doric column",
+     "point": [
+      3215,
+      2245
+     ]
+    }
+   ]
+  },
+  "pdf/03.pdf": {
+   "file": "pdf/03.pdf",
+   "page": 1,
+   "holdout_input": true,
+   "style": "vector CAD planning drawing (cropped A1) rendered at 150 DPI, 3509x3092; thick solid black walls, glazed walls as thin double lines with sliding arrows, strongly non-orthogonal faceted rooms, furniture blocks, two floor plans on one sheet plus title block",
+   "roi": [
+    [
+     1000,
+     600,
+     2400,
+     1490
+    ],
+    [
+     850,
+     1880,
+     2400,
+     2800
+    ]
+   ],
+   "gt_notes": "Labelled regions: ground-floor plan and first-floor plan (title block, north point and captions outside). Ground floor: family room, stair hall, entrance corridor and the glazed link to the sitting room are one space; the sitting room opens from the link without a door (O1). Door positions of the media room and of the utility room from the small corridor are not certain (thin leaf lines only). First floor: the gallery landing includes the glazed bridge to the guest bedroom, whose glazed side has sliding doors (labelled 'opening'); the walk-in wardrobe belongs to the master bedroom; the south-east bedroom and its en-suite (curved shower / WC pods, no straight wall) are one space with two zones. The VOID over the hall is not a floor (labelled as non-structural 'void'). Glazed walls are not labelled as windows.",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "open_plan",
+     "points": [
+      [
+       1412,
+       718
+      ],
+      [
+       1353,
+       1047
+      ],
+      [
+       1247,
+       953
+      ],
+      [
+       1900,
+       960
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "room",
+     "points": [
+      [
+       2200,
+       871
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "room",
+     "points": [
+      [
+       1350,
+       1300
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "wet",
+     "points": [
+      [
+       1575,
+       1330
+      ]
+     ]
+    },
+    {
+     "id": "S5",
+     "kind": "room",
+     "points": [
+      [
+       1730,
+       1300
+      ]
+     ]
+    },
+    {
+     "id": "S6",
+     "kind": "room",
+     "points": [
+      [
+       1332,
+       2009
+      ],
+      [
+       1230,
+       2160
+      ]
+     ]
+    },
+    {
+     "id": "S7",
+     "kind": "wet",
+     "points": [
+      [
+       1044,
+       2086
+      ]
+     ]
+    },
+    {
+     "id": "S8",
+     "kind": "room",
+     "points": [
+      [
+       1568,
+       2060
+      ]
+     ]
+    },
+    {
+     "id": "S9",
+     "kind": "wet",
+     "points": [
+      [
+       1532,
+       2190
+      ]
+     ]
+    },
+    {
+     "id": "S10",
+     "kind": "circulation",
+     "points": [
+      [
+       1674,
+       2315
+      ],
+      [
+       1909,
+       2280
+      ]
+     ]
+    },
+    {
+     "id": "S11",
+     "kind": "room",
+     "points": [
+      [
+       2156,
+       2256
+      ]
+     ]
+    },
+    {
+     "id": "S12",
+     "kind": "room",
+     "points": [
+      [
+       1321,
+       2598
+      ]
+     ]
+    },
+    {
+     "id": "S13",
+     "kind": "wet",
+     "points": [
+      [
+       1556,
+       2560
+      ]
+     ]
+    },
+    {
+     "id": "S14",
+     "kind": "open_plan",
+     "points": [
+      [
+       1873,
+       2621
+      ],
+      [
+       1760,
+       2720
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Family room",
+     "printed": "FAMILY ROOM",
+     "point": [
+      1412,
+      718
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Sitting room",
+     "printed": "SITTING ROOM",
+     "point": [
+      2200,
+      871
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Media room",
+     "printed": "MEDIA ROOM",
+     "point": [
+      1350,
+      1300
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "WC",
+     "printed": "W.C.",
+     "point": [
+      1575,
+      1330
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "Utility",
+     "printed": "UTILITY / PLANT / BOOT ROOM",
+     "point": [
+      1730,
+      1300
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Master bedroom",
+     "printed": "MASTER BED",
+     "point": [
+      1332,
+      2009
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Wardrobe",
+     "printed": "WROBE",
+     "point": [
+      1170,
+      2120
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Ensuite",
+     "printed": "EN-SUITE",
+     "point": [
+      1044,
+      2086
+     ],
+     "space": "S7"
+    },
+    {
+     "name": "Bedroom",
+     "printed": "BEDROOM",
+     "point": [
+      1568,
+      2115
+     ],
+     "space": "S8"
+    },
+    {
+     "name": "Ensuite",
+     "printed": "EN-SUITE",
+     "point": [
+      1532,
+      2213
+     ],
+     "space": "S9"
+    },
+    {
+     "name": "Landing",
+     "printed": "GALLERY LANDING",
+     "point": [
+      1674,
+      2315
+     ],
+     "space": "S10"
+    },
+    {
+     "name": "Guest bedroom",
+     "printed": "GUEST BEDROOM",
+     "point": [
+      2156,
+      2256
+     ],
+     "space": "S11"
+    },
+    {
+     "name": "Bedroom",
+     "printed": "BEDROOM",
+     "point": [
+      1321,
+      2598
+     ],
+     "space": "S12"
+    },
+    {
+     "name": "Bathroom",
+     "printed": "BATHROOM",
+     "point": [
+      1556,
+      2533
+     ],
+     "space": "S13"
+    },
+    {
+     "name": "Bedroom",
+     "printed": "BEDROOM",
+     "point": [
+      1873,
+      2621
+     ],
+     "space": "S14"
+    },
+    {
+     "name": "Ensuite",
+     "printed": "EN-SUITE",
+     "point": [
+      1744,
+      2709
+     ],
+     "space": "S14"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      1229,
+      1018
+     ],
+     "p1": [
+      1229,
+      1094
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      1541,
+      1265
+     ],
+     "p1": [
+      1588,
+      1265
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      1527,
+      1176
+     ],
+     "p1": [
+      1527,
+      1241
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      1612,
+      1162
+     ],
+     "p1": [
+      1612,
+      1224
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      1776,
+      1162
+     ],
+     "p1": [
+      1841,
+      1162
+     ],
+     "wall_thickness_px": 20
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      2079,
+      888
+     ],
+     "p1": [
+      2079,
+      1053
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      1350,
+      2230
+     ],
+     "p1": [
+      1403,
+      2230
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "D7",
+     "kind": "door",
+     "p0": [
+      1123,
+      2021
+     ],
+     "p1": [
+      1123,
+      2086
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "D8",
+     "kind": "door",
+     "p0": [
+      1538,
+      2116
+     ],
+     "p1": [
+      1585,
+      2116
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D9",
+     "kind": "door",
+     "p0": [
+      1591,
+      2233
+     ],
+     "p1": [
+      1650,
+      2233
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "D10",
+     "kind": "door",
+     "p0": [
+      1356,
+      2474
+     ],
+     "p1": [
+      1403,
+      2474
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "D11",
+     "kind": "door",
+     "p0": [
+      1538,
+      2474
+     ],
+     "p1": [
+      1591,
+      2474
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "D12",
+     "kind": "door",
+     "p0": [
+      1656,
+      2386
+     ],
+     "p1": [
+      1656,
+      2445
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "O2",
+     "kind": "opening",
+     "p0": [
+      2097,
+      2200
+     ],
+     "p1": [
+      2097,
+      2365
+     ],
+     "wall_thickness_px": 10
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "counter",
+     "what": "kitchen island (curved)",
+     "point": [
+      1300,
+      800
+     ],
+     "bbox": [
+      1159,
+      718,
+      1429,
+      876
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "dining table",
+     "point": [
+      1526,
+      776
+     ],
+     "bbox": [
+      1488,
+      700,
+      1565,
+      853
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "sofa (family)",
+     "point": [
+      1667,
+      776
+     ],
+     "bbox": [
+      1641,
+      712,
+      1694,
+      841
+     ]
+    },
+    {
+     "kind": "stairs",
+     "what": "stair (ground)",
+     "point": [
+      1523,
+      1032
+     ],
+     "bbox": [
+      1429,
+      935,
+      1618,
+      1129
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "window seat",
+     "point": [
+      1070,
+      770
+     ],
+     "bbox": [
+      1053,
+      647,
+      1088,
+      900
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "sofa (media)",
+     "point": [
+      1359,
+      1232
+     ],
+     "bbox": [
+      1294,
+      1206,
+      1424,
+      1259
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "sofa (sitting)",
+     "point": [
+      2203,
+      1030
+     ],
+     "bbox": [
+      2135,
+      1000,
+      2271,
+      1059
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed (master)",
+     "point": [
+      1379,
+      2092
+     ],
+     "bbox": [
+      1326,
+      2039,
+      1432,
+      2145
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed (bedroom NE)",
+     "point": [
+      1644,
+      2068
+     ],
+     "bbox": [
+      1591,
+      2009,
+      1697,
+      2127
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed (bedroom SW)",
+     "point": [
+      1323,
+      2560
+     ],
+     "bbox": [
+      1238,
+      2498,
+      1409,
+      2621
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed (bedroom SE)",
+     "point": [
+      1830,
+      2480
+     ],
+     "bbox": [
+      1703,
+      2374,
+      1956,
+      2586
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed (guest)",
+     "point": [
+      2265,
+      2256
+     ],
+     "bbox": [
+      2209,
+      2215,
+      2321,
+      2298
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "bath tub",
+     "point": [
+      1015,
+      2033
+     ],
+     "bbox": [
+      962,
+      1992,
+      1068,
+      2074
+     ]
+    },
+    {
+     "kind": "stairs",
+     "what": "stair (first)",
+     "point": [
+      1509,
+      2332
+     ],
+     "bbox": [
+      1444,
+      2256,
+      1574,
+      2409
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "void over the hall",
+     "point": [
+      1253,
+      2350
+     ],
+     "bbox": [
+      1191,
+      2233,
+      1315,
+      2474
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "shower pod",
+     "point": [
+      1650,
+      2660
+     ],
+     "bbox": [
+      1603,
+      2598,
+      1697,
+      2721
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "WC pod",
+     "point": [
+      1809,
+      2675
+     ],
+     "bbox": [
+      1768,
+      2645,
+      1850,
+      2704
+     ]
+    }
+   ],
+   "protected": []
+  },
+  "pdf/04.pdf": {
+   "file": "pdf/04.pdf",
+   "page": 1,
+   "holdout_input": true,
+   "style": "vector design-review sheet (11x17, rotated page) rendered at 150 DPI, 2550x1650; thin black walls of mixed weight, dense residential units above, retail / live-work / lobby strip below, column grid with bubbles and grid lines, isolated columns in an open parking area, small text",
+   "roi": [
+    [
+     250,
+     880,
+     765,
+     1385
+    ],
+    [
+     761,
+     995,
+     850,
+     1098
+    ],
+    [
+     761,
+     1098,
+     1050,
+     1385
+    ],
+    [
+     1440,
+     997,
+     2300,
+     1385
+    ]
+   ],
+   "gt_notes": "Labelled regions (roi): the commercial ground-floor strip - west retail bays with their corridor, restrooms and store room, and the east lobby / core / retail / offices below the back-of-house strip. Not labelled: the dense residential units (townhouses, 1-3 BR, 2 BR and live/work units), the east back-of-house rooms (top strip) and the parking area with isolated columns. Storefront glazing is not labelled as windows; only clear storefront doors are labelled. Elevator shafts are labelled as 'other' spaces.",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "room",
+     "points": [
+      [
+       335,
+       1251
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "room",
+     "points": [
+      [
+       460,
+       1251
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "room",
+     "points": [
+      [
+       583,
+       1251
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "room",
+     "points": [
+      [
+       720,
+       1251
+      ]
+     ]
+    },
+    {
+     "id": "S5",
+     "kind": "room",
+     "points": [
+      [
+       885,
+       1251
+      ],
+      [
+       815,
+       1050
+      ]
+     ]
+    },
+    {
+     "id": "S6",
+     "kind": "circulation",
+     "points": [
+      [
+       600,
+       1024
+      ],
+      [
+       432,
+       950
+      ]
+     ]
+    },
+    {
+     "id": "S7",
+     "kind": "wet",
+     "points": [
+      [
+       499,
+       960
+      ]
+     ]
+    },
+    {
+     "id": "S8",
+     "kind": "wet",
+     "points": [
+      [
+       568,
+       960
+      ]
+     ]
+    },
+    {
+     "id": "S9",
+     "kind": "other",
+     "points": [
+      [
+       690,
+       950
+      ]
+     ]
+    },
+    {
+     "id": "S10",
+     "kind": "circulation",
+     "points": [
+      [
+       1494,
+       1250
+      ],
+      [
+       1500,
+       1050
+      ]
+     ]
+    },
+    {
+     "id": "S11",
+     "kind": "circulation",
+     "points": [
+      [
+       1500,
+       1345
+      ]
+     ]
+    },
+    {
+     "id": "S12",
+     "kind": "circulation",
+     "points": [
+      [
+       1597,
+       1032
+      ]
+     ]
+    },
+    {
+     "id": "S13",
+     "kind": "other",
+     "points": [
+      [
+       1581,
+       1208
+      ]
+     ]
+    },
+    {
+     "id": "S14",
+     "kind": "other",
+     "points": [
+      [
+       1581,
+       1273
+      ]
+     ]
+    },
+    {
+     "id": "S15",
+     "kind": "room",
+     "points": [
+      [
+       1759,
+       1250
+      ],
+      [
+       1700,
+       1050
+      ]
+     ]
+    },
+    {
+     "id": "S16",
+     "kind": "room",
+     "points": [
+      [
+       1972,
+       1250
+      ]
+     ]
+    },
+    {
+     "id": "S17",
+     "kind": "room",
+     "points": [
+      [
+       2183,
+       1250
+      ]
+     ]
+    },
+    {
+     "id": "S18",
+     "kind": "circulation",
+     "points": [
+      [
+       2094,
+       1119
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Retail",
+     "printed": "Retail",
+     "point": [
+      335,
+      1251
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Retail",
+     "printed": "Retail",
+     "point": [
+      460,
+      1251
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Retail",
+     "printed": "Retail",
+     "point": [
+      583,
+      1251
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "Retail",
+     "printed": "Retail",
+     "point": [
+      720,
+      1251
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "Retail",
+     "printed": "Retail",
+     "point": [
+      885,
+      1251
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Corridor",
+     "printed": null,
+     "point": [
+      600,
+      1024
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Restroom",
+     "printed": null,
+     "point": [
+      499,
+      960
+     ],
+     "space": "S7"
+    },
+    {
+     "name": "Restroom",
+     "printed": null,
+     "point": [
+      568,
+      960
+     ],
+     "space": "S8"
+    },
+    {
+     "name": "Storage",
+     "printed": null,
+     "point": [
+      690,
+      950
+     ],
+     "space": "S9"
+    },
+    {
+     "name": "Lobby",
+     "printed": "Lobby",
+     "point": [
+      1494,
+      1250
+     ],
+     "space": "S10"
+    },
+    {
+     "name": "Vestibule",
+     "printed": null,
+     "point": [
+      1500,
+      1345
+     ],
+     "space": "S11"
+    },
+    {
+     "name": "Stair",
+     "printed": null,
+     "point": [
+      1597,
+      1032
+     ],
+     "space": "S12"
+    },
+    {
+     "name": "Elevator",
+     "printed": null,
+     "point": [
+      1581,
+      1208
+     ],
+     "space": "S13"
+    },
+    {
+     "name": "Elevator",
+     "printed": null,
+     "point": [
+      1581,
+      1273
+     ],
+     "space": "S14"
+    },
+    {
+     "name": "Retail/offices",
+     "printed": "Retail/Offices",
+     "point": [
+      1759,
+      1250
+     ],
+     "space": "S15"
+    },
+    {
+     "name": "Retail",
+     "printed": "Retail",
+     "point": [
+      1972,
+      1250
+     ],
+     "space": "S16"
+    },
+    {
+     "name": "Retail",
+     "printed": "Retail",
+     "point": [
+      2183,
+      1250
+     ],
+     "space": "S17"
+    },
+    {
+     "name": "Corridor",
+     "printed": null,
+     "point": [
+      2094,
+      1119
+     ],
+     "space": "S18"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      427,
+      880
+     ],
+     "p1": [
+      451,
+      880
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      412,
+      1005
+     ],
+     "p1": [
+      412,
+      1043
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      473,
+      998
+     ],
+     "p1": [
+      500,
+      998
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      595,
+      998
+     ],
+     "p1": [
+      620,
+      998
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      733,
+      998
+     ],
+     "p1": [
+      758,
+      998
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      502,
+      1043
+     ],
+     "p1": [
+      523,
+      1043
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D7",
+     "kind": "door",
+     "p0": [
+      537,
+      1043
+     ],
+     "p1": [
+      558,
+      1043
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D8",
+     "kind": "door",
+     "p0": [
+      671,
+      1043
+     ],
+     "p1": [
+      689,
+      1043
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D9",
+     "kind": "door",
+     "p0": [
+      785,
+      1001
+     ],
+     "p1": [
+      785,
+      1039
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D10",
+     "kind": "door",
+     "p0": [
+      506,
+      1374
+     ],
+     "p1": [
+      527,
+      1374
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D11",
+     "kind": "door",
+     "p0": [
+      533,
+      1374
+     ],
+     "p1": [
+      554,
+      1374
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D12",
+     "kind": "door",
+     "p0": [
+      1461,
+      1300
+     ],
+     "p1": [
+      1505,
+      1300
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D13",
+     "kind": "door",
+     "p0": [
+      1610,
+      1108
+     ],
+     "p1": [
+      1638,
+      1108
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D14",
+     "kind": "door",
+     "p0": [
+      2116,
+      1001
+     ],
+     "p1": [
+      2116,
+      1041
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D15",
+     "kind": "door",
+     "p0": [
+      2076,
+      1204
+     ],
+     "p1": [
+      2113,
+      1204
+     ],
+     "wall_thickness_px": 8
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "fixture",
+     "what": "restroom fixtures (west)",
+     "point": [
+      530,
+      920
+     ],
+     "bbox": [
+      454,
+      891,
+      620,
+      998
+     ]
+    },
+    {
+     "kind": "stairs",
+     "what": "stair (core)",
+     "point": [
+      1590,
+      1030
+     ],
+     "bbox": [
+      1557,
+      956,
+      1638,
+      1108
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "grid line A / column bubbles",
+     "point": [
+      300,
+      1376
+     ],
+     "bbox": [
+      100,
+      1370,
+      2420,
+      1382
+     ]
+    }
+   ],
+   "protected": []
+  },
+  "pdf/05.pdf": {
+   "file": "pdf/05.pdf",
+   "page": 1,
+   "holdout_input": true,
+   "style": "vector CAD planning sheet (A1, 1:200) rendered at 150 DPI, 3509x4967; three floor plans of a ~50-apartment block on one sheet; thin double-line walls, dense furniture, tiny handwritten-style labels, unit numbers, lifts, stairs, overall dimension lines",
+   "roi": [
+    [
+     2180,
+     740,
+     2340,
+     826
+    ],
+    [
+     2180,
+     826,
+     2580,
+     1000
+    ],
+    [
+     2010,
+     1000,
+     2580,
+     1083
+    ],
+    [
+     2010,
+     1083,
+     2385,
+     1158
+    ]
+   ],
+   "gt_notes": "Labelled region (roi): the ground-floor communal core only (lobby, entrance lobby, communal lounge, office, WC, guest suite, corridor, cleaners' store). The apartments (rooms ~30-40 px wide at this resolution), the other floors and the bin store are not labelled. The corridor south of the office links the guest suite, WC and cleaners' store; its connection to the entrance lobby is through a door whose exact position is uncertain (not labelled). Windows are not labelled.",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "circulation",
+     "points": [
+      [
+       2240,
+       790
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "circulation",
+     "points": [
+      [
+       2265,
+       910
+      ],
+      [
+       2290,
+       1040
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "room",
+     "points": [
+      [
+       2440,
+       950
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "room",
+     "points": [
+      [
+       2190,
+       1030
+      ]
+     ]
+    },
+    {
+     "id": "S5",
+     "kind": "wet",
+     "points": [
+      [
+       2185,
+       1097
+      ]
+     ]
+    },
+    {
+     "id": "S6",
+     "kind": "room",
+     "points": [
+      [
+       2080,
+       1050
+      ]
+     ]
+    },
+    {
+     "id": "S7",
+     "kind": "wet",
+     "points": [
+      [
+       2072,
+       1115
+      ]
+     ]
+    },
+    {
+     "id": "S8",
+     "kind": "circulation",
+     "points": [
+      [
+       2200,
+       1135
+      ]
+     ]
+    },
+    {
+     "id": "S9",
+     "kind": "closet",
+     "points": [
+      [
+       2365,
+       1110
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Lobby",
+     "printed": "Lobby.",
+     "point": [
+      2240,
+      790
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Entrance lobby",
+     "printed": "Entrance Lobby.",
+     "point": [
+      2265,
+      910
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Communal lounge",
+     "printed": "Communal Lounge.",
+     "point": [
+      2440,
+      950
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "Office",
+     "printed": "Office.",
+     "point": [
+      2190,
+      1030
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "WC",
+     "printed": "W.C.",
+     "point": [
+      2185,
+      1097
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Guest room",
+     "printed": "Guest.",
+     "point": [
+      2080,
+      1078
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Ensuite",
+     "printed": null,
+     "point": [
+      2072,
+      1115
+     ],
+     "space": "S7"
+    },
+    {
+     "name": "Corridor",
+     "printed": null,
+     "point": [
+      2200,
+      1135
+     ],
+     "space": "S8"
+    },
+    {
+     "name": "Cleaners store",
+     "printed": "Cleaners St.",
+     "point": [
+      2347,
+      1126
+     ],
+     "space": "S9"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      2262,
+      825
+     ],
+     "p1": [
+      2284,
+      825
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      2180,
+      886
+     ],
+     "p1": [
+      2180,
+      934
+     ],
+     "wall_thickness_px": 8
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      2337,
+      937
+     ],
+     "p1": [
+      2337,
+      974
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      2240,
+      1020
+     ],
+     "p1": [
+      2240,
+      1060
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      2137,
+      1120
+     ],
+     "p1": [
+      2137,
+      1151
+     ],
+     "wall_thickness_px": 6
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      2343,
+      1111
+     ],
+     "p1": [
+      2343,
+      1140
+     ],
+     "wall_thickness_px": 6
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "furniture",
+     "what": "lounge sofas and tables",
+     "point": [
+      2400,
+      845
+     ],
+     "bbox": [
+      2370,
+      835,
+      2560,
+      1075
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "guest beds",
+     "point": [
+      2060,
+      1035
+     ],
+     "bbox": [
+      2035,
+      1005,
+      2120,
+      1060
+     ]
+    }
+   ],
+   "protected": []
+  },
+  "images/06.jpg": {
+   "file": "images/06.jpg",
+   "holdout_input": true,
+   "style": "architect presentation drawing, 4961x3508 (native), walls drawn HOLLOW (black double outline, white or lightly hatched core), floor textures (wood, herringbone, terrazzo, tiles), people and furniture, no room labels, scale bar",
+   "gt_notes": "No printed room names: rooms carry names by function with printed = null. Bedroom opens to the living area through a doorless opening at the end of the wardrobe partition (a thin threshold line, possibly a pocket door: labelled 'opening'). Living, dining and kitchen share one physical space (floor-finish change only). The shower room is reached from the kitchen through an opening without a door; the WC inside it has a swing door; the washing-machine niche belongs to the shower room. Wavy lines along the facades are curtains, not walls.",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "room",
+     "points": [
+      [
+       1017,
+       1612
+      ],
+      [
+       1538,
+       1687
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "open_plan",
+     "points": [
+      [
+       2480,
+       1612
+      ],
+      [
+       3622,
+       1612
+      ],
+      [
+       2000,
+       1000
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "wet",
+     "points": [
+      [
+       3624,
+       1922
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "wet",
+     "points": [
+      [
+       3794,
+       2072
+      ],
+      [
+       3744,
+       2442
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Bedroom",
+     "printed": null,
+     "point": [
+      1017,
+      1612
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Living room",
+     "printed": null,
+     "point": [
+      2480,
+      1612
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Dining",
+     "printed": null,
+     "point": [
+      3420,
+      1560
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Kitchen",
+     "printed": null,
+     "point": [
+      3700,
+      1300
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "WC",
+     "printed": null,
+     "point": [
+      3624,
+      1922
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "Bath",
+     "printed": null,
+     "point": [
+      3794,
+      2072
+     ],
+     "space": "S4"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      2280,
+      1807
+     ],
+     "p1": [
+      2522,
+      1807
+     ],
+     "wall_thickness_px": 74
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      3699,
+      1862
+     ],
+     "p1": [
+      3699,
+      2027
+     ],
+     "wall_thickness_px": 14
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      1857,
+      1577
+     ],
+     "p1": [
+      1857,
+      1767
+     ],
+     "wall_thickness_px": 60
+    },
+    {
+     "id": "O2",
+     "kind": "opening",
+     "p0": [
+      3699,
+      1809
+     ],
+     "p1": [
+      3872,
+      1809
+     ],
+     "wall_thickness_px": 65
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      1141,
+      1800
+     ],
+     "p1": [
+      1414,
+      1800
+     ],
+     "wall_thickness_px": 70
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      1947,
+      1800
+     ],
+     "p1": [
+      2177,
+      1800
+     ],
+     "wall_thickness_px": 70
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      2654,
+      1800
+     ],
+     "p1": [
+      2887,
+      1800
+     ],
+     "wall_thickness_px": 70
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      3244,
+      1800
+     ],
+     "p1": [
+      3484,
+      1800
+     ],
+     "wall_thickness_px": 70
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      3649,
+      2537
+     ],
+     "p1": [
+      3884,
+      2537
+     ],
+     "wall_thickness_px": 45
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "shelving",
+     "what": "wardrobe column",
+     "point": [
+      1734,
+      1200
+     ],
+     "bbox": [
+      1637,
+      838,
+      1831,
+      1575
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed",
+     "point": [
+      1290,
+      1400
+     ],
+     "bbox": [
+      1104,
+      1166,
+      1468,
+      1580
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "desk",
+     "point": [
+      1290,
+      1090
+     ],
+     "bbox": [
+      1086,
+      1022,
+      1481,
+      1158
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "sofa",
+     "point": [
+      2450,
+      960
+     ],
+     "bbox": [
+      2183,
+      848,
+      2716,
+      1079
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "coffee table",
+     "point": [
+      2437,
+      1300
+     ],
+     "bbox": [
+      2232,
+      1215,
+      2642,
+      1389
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "banquette / sofa",
+     "point": [
+      3055,
+      1315
+     ],
+     "bbox": [
+      2939,
+      1129,
+      3170,
+      1501
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "sideboard (top)",
+     "point": [
+      3055,
+      865
+     ],
+     "bbox": [
+      2939,
+      838,
+      3170,
+      893
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "sideboard (bottom)",
+     "point": [
+      3055,
+      1742
+     ],
+     "bbox": [
+      2939,
+      1712,
+      3170,
+      1773
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "dining table",
+     "point": [
+      3435,
+      1315
+     ],
+     "bbox": [
+      3341,
+      1129,
+      3530,
+      1501
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "kitchen counter",
+     "point": [
+      3850,
+      1320
+     ],
+     "bbox": [
+      3783,
+      967,
+      3919,
+      1674
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "washing machine",
+     "point": [
+      3626,
+      2250
+     ],
+     "bbox": [
+      3564,
+      2192,
+      3689,
+      2307
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "WC",
+     "point": [
+      3619,
+      2062
+     ],
+     "bbox": [
+      3584,
+      2012,
+      3654,
+      2112
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "basin",
+     "point": [
+      3946,
+      2242
+     ],
+     "bbox": [
+      3909,
+      2197,
+      3984,
+      2287
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "shower (curtain)",
+     "point": [
+      3729,
+      2447
+     ],
+     "bbox": [
+      3549,
+      2357,
+      3909,
+      2537
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "curtain line (bottom)",
+     "point": [
+      2600,
+      1755
+     ],
+     "bbox": [
+      1500,
+      1742,
+      3700,
+      1765
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "curtain line (left)",
+     "point": [
+      930,
+      1300
+     ],
+     "bbox": [
+      918,
+      843,
+      943,
+      1736
+     ]
+    }
+   ],
+   "protected": []
+  },
+  "images/07.png": {
+   "file": "images/07.png",
+   "holdout_input": true,
+   "style": "architect drawing 4961x3508 (native), thin low-contrast grey/black linework on off-white, walls drawn HOLLOW (double outline), curved segmented facade with planters on a terrace, dashed door swings, no room labels",
+   "gt_notes": "No printed room names (printed = null). One open space holds hall, kitchen, dining and living (no partitions). The bedroom is separated from it by thin partitions with a wardrobe; two doors lead from the living area into the bedroom (north and south of the wardrobe, dashed swings) and a door leads from the bedroom to the terrace. Shower room and WC of the bedroom open from the bedroom through a thin diagonal partition (dashed door swings); the guest WC opens from the entrance hall. The triangular room at the south-west (dashed cross inside) has a double door; its use is unclear (storage / technical). The terrace between the facade and the curved railing is labelled as an outdoor space. Door positions in the diagonal partitions are approximate (+-10 px).",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "open_plan",
+     "points": [
+      [
+       2790,
+       1934
+      ],
+      [
+       1885,
+       1984
+      ],
+      [
+       2728,
+       1166
+      ],
+      [
+       3550,
+       1100
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "room",
+     "points": [
+      [
+       3700,
+       2000
+      ],
+      [
+       3600,
+       1450
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "wet",
+     "points": [
+      [
+       3900,
+       1300
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "wet",
+     "points": [
+      [
+       4233,
+       1450
+      ]
+     ]
+    },
+    {
+     "id": "S5",
+     "kind": "wet",
+     "points": [
+      [
+       3900,
+       1120
+      ]
+     ]
+    },
+    {
+     "id": "S6",
+     "kind": "other",
+     "points": [
+      [
+       1488,
+       2294
+      ]
+     ]
+    },
+    {
+     "id": "S7",
+     "kind": "outdoor",
+     "points": [
+      [
+       2728,
+       2480
+      ],
+      [
+       943,
+       1860
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Living room",
+     "printed": null,
+     "point": [
+      2790,
+      1934
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Dining",
+     "printed": null,
+     "point": [
+      1885,
+      1984
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Kitchen",
+     "printed": null,
+     "point": [
+      2728,
+      1166
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Entry",
+     "printed": null,
+     "point": [
+      3550,
+      1100
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Bedroom",
+     "printed": null,
+     "point": [
+      3700,
+      2000
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Bath",
+     "printed": null,
+     "point": [
+      3900,
+      1300
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "WC",
+     "printed": null,
+     "point": [
+      4233,
+      1450
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "WC",
+     "printed": null,
+     "point": [
+      3900,
+      1120
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Storage",
+     "printed": null,
+     "point": [
+      1488,
+      2294
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Terrace",
+     "printed": null,
+     "point": [
+      2728,
+      2480
+     ],
+     "space": "S7"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      3524,
+      958
+     ],
+     "p1": [
+      3729,
+      958
+     ],
+     "wall_thickness_px": 45
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      3779,
+      1030
+     ],
+     "p1": [
+      3779,
+      1165
+     ],
+     "wall_thickness_px": 20
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      3804,
+      1375
+     ],
+     "p1": [
+      3940,
+      1452
+     ],
+     "wall_thickness_px": 15
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      4075,
+      1525
+     ],
+     "p1": [
+      4204,
+      1600
+     ],
+     "wall_thickness_px": 15
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      3390,
+      1378
+     ],
+     "p1": [
+      3390,
+      1530
+     ],
+     "wall_thickness_px": 15
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      3390,
+      2045
+     ],
+     "p1": [
+      3390,
+      2200
+     ],
+     "wall_thickness_px": 15
+    },
+    {
+     "id": "D7",
+     "kind": "door",
+     "p0": [
+      3412,
+      2262
+     ],
+     "p1": [
+      3567,
+      2262
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "D8",
+     "kind": "door",
+     "p0": [
+      1285,
+      2225
+     ],
+     "p1": [
+      1550,
+      2225
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "D9",
+     "kind": "door",
+     "p0": [
+      2175,
+      2245
+     ],
+     "p1": [
+      2480,
+      2245
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "D10",
+     "kind": "door",
+     "p0": [
+      2721,
+      2245
+     ],
+     "p1": [
+      3026,
+      2245
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "D11",
+     "kind": "door",
+     "p0": [
+      1077,
+      1513
+     ],
+     "p1": [
+      1077,
+      1972
+     ],
+     "wall_thickness_px": 50
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      3587,
+      2262
+     ],
+     "p1": [
+      3842,
+      2262
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      4342,
+      1375
+     ],
+     "p1": [
+      4267,
+      1517
+     ],
+     "wall_thickness_px": 40
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "furniture",
+     "what": "sofa",
+     "point": [
+      2790,
+      1700
+     ],
+     "bbox": [
+      2510,
+      1587,
+      3070,
+      1810
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "coffee table",
+     "point": [
+      2787,
+      1965
+     ],
+     "bbox": [
+      2678,
+      1902,
+      2897,
+      2029
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "dining table",
+     "point": [
+      2095,
+      1938
+     ],
+     "bbox": [
+      1996,
+      1743,
+      2195,
+      2133
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "bench / storage",
+     "point": [
+      1593,
+      1643
+     ],
+     "bbox": [
+      1128,
+      1600,
+      2058,
+      1686
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "kitchen island",
+     "point": [
+      2831,
+      1310
+     ],
+     "bbox": [
+      2542,
+      1240,
+      3120,
+      1381
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "kitchen counter",
+     "point": [
+      2821,
+      1011
+     ],
+     "bbox": [
+      2530,
+      980,
+      3112,
+      1042
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "fridge / tall unit",
+     "point": [
+      2465,
+      1122
+     ],
+     "bbox": [
+      2400,
+      1054,
+      2530,
+      1190
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "hall closet",
+     "point": [
+      3570,
+      1282
+     ],
+     "bbox": [
+      3385,
+      1192,
+      3755,
+      1372
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "bedroom wardrobe",
+     "point": [
+      3317,
+      1780
+     ],
+     "bbox": [
+      3236,
+      1530,
+      3398,
+      2030
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed",
+     "point": [
+      3810,
+      1890
+     ],
+     "bbox": [
+      3529,
+      1600,
+      4096,
+      2183
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "basin (bedroom)",
+     "point": [
+      3995,
+      1590
+     ],
+     "bbox": [
+      3887,
+      1435,
+      4075,
+      1605
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "WC",
+     "point": [
+      4227,
+      1323
+     ],
+     "bbox": [
+      4171,
+      1258,
+      4283,
+      1388
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "guest WC fixtures",
+     "point": [
+      4081,
+      1072
+     ],
+     "bbox": [
+      3862,
+      985,
+      4139,
+      1115
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "rugs (dashed)",
+     "point": [
+      1340,
+      1700
+     ],
+     "bbox": [
+      1215,
+      1624,
+      1793,
+      2039
+     ]
+    }
+   ],
+   "protected": []
+  },
+  "images/08.jpg": {
+   "file": "images/08.jpg",
+   "holdout_input": true,
+   "analysis_scale": 0.6989,
+   "style": "architect presentation drawing, 5865x8377 original reduced to 4099x5855 (24 MP analysis frame); grey filled walls, glass in thin double lines, numbered room bubbles with the legend outside the plan, section lines A/B/C crossing the plan, people, plants and large tree-canopy overlays below the building",
+   "gt_notes": "Rooms are named only by numbers (legend at the right): printed = null, names from the legend. Ambiguous decisions: (1) Living room (3) is separated from the foyer by a wall stub with a 1.8 m opening above it: labelled as its own space (O3). (2) Pooja (11) is closed by low units with a double door (D5): labelled as its own space. (3) Foyer (2), dining (4), the corridor to the bedrooms and the staircase (13) share one space (no walls; dashed lines are ceiling/section lines). (4) Kitchen (7) opens to the dining area through a 1.5 m opening (O1); the wash alcove (5) is open to the dining area (O2). Verandah (12), patio (14) and sitout (1) are outdoor spaces. Thin lines on the toilets' outer wall may be ventilators; not labelled as windows.",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "room",
+     "points": [
+      [
+       878,
+       790
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "wet",
+     "points": [
+      [
+       732,
+       1318
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "wet",
+     "points": [
+      [
+       732,
+       1874
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "room",
+     "points": [
+      [
+       878,
+       2313
+      ]
+     ]
+    },
+    {
+     "id": "S5",
+     "kind": "open_plan",
+     "points": [
+      [
+       2035,
+       2225
+      ],
+      [
+       1552,
+       1757
+      ],
+      [
+       1584,
+       3187
+      ],
+      [
+       2280,
+       1000
+      ]
+     ]
+    },
+    {
+     "id": "S6",
+     "kind": "room",
+     "points": [
+      [
+       1630,
+       600
+      ]
+     ]
+    },
+    {
+     "id": "S7",
+     "kind": "outdoor",
+     "points": [
+      [
+       2160,
+       560
+      ]
+     ]
+    },
+    {
+     "id": "S8",
+     "kind": "outdoor",
+     "points": [
+      [
+       2893,
+       1839
+      ]
+     ]
+    },
+    {
+     "id": "S9",
+     "kind": "wet",
+     "points": [
+      [
+       2443,
+       2558
+      ]
+     ]
+    },
+    {
+     "id": "S10",
+     "kind": "wet",
+     "points": [
+      [
+       2443,
+       2813
+      ]
+     ]
+    },
+    {
+     "id": "S11",
+     "kind": "room",
+     "points": [
+      [
+       2256,
+       3453
+      ]
+     ]
+    },
+    {
+     "id": "S12",
+     "kind": "room",
+     "points": [
+      [
+       2835,
+       3453
+      ]
+     ]
+    },
+    {
+     "id": "S13",
+     "kind": "room",
+     "points": [
+      [
+       732,
+       3221
+      ]
+     ]
+    },
+    {
+     "id": "S14",
+     "kind": "outdoor",
+     "points": [
+      [
+       1584,
+       3695
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Bedroom",
+     "printed": null,
+     "point": [
+      878,
+      790
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Toilet",
+     "printed": null,
+     "point": [
+      732,
+      1318
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Toilet",
+     "printed": null,
+     "point": [
+      732,
+      1874
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "Bedroom",
+     "printed": null,
+     "point": [
+      878,
+      2313
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "Dining",
+     "printed": null,
+     "point": [
+      2035,
+      2225
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Foyer",
+     "printed": null,
+     "point": [
+      1584,
+      3187
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Staircase",
+     "printed": null,
+     "point": [
+      2280,
+      1000
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Pooja",
+     "printed": null,
+     "point": [
+      1630,
+      600
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Verandah",
+     "printed": null,
+     "point": [
+      2160,
+      560
+     ],
+     "space": "S7"
+    },
+    {
+     "name": "Patio",
+     "printed": null,
+     "point": [
+      2893,
+      1839
+     ],
+     "space": "S8"
+    },
+    {
+     "name": "Wash",
+     "printed": null,
+     "point": [
+      2443,
+      2558
+     ],
+     "space": "S9"
+    },
+    {
+     "name": "Powder room",
+     "printed": null,
+     "point": [
+      2443,
+      2813
+     ],
+     "space": "S10"
+    },
+    {
+     "name": "Kitchen",
+     "printed": null,
+     "point": [
+      2256,
+      3453
+     ],
+     "space": "S11"
+    },
+    {
+     "name": "Work area",
+     "printed": null,
+     "point": [
+      2835,
+      3453
+     ],
+     "space": "S12"
+    },
+    {
+     "name": "Living room",
+     "printed": null,
+     "point": [
+      732,
+      3221
+     ],
+     "space": "S13"
+    },
+    {
+     "name": "Sitout",
+     "printed": null,
+     "point": [
+      1584,
+      3695
+     ],
+     "space": "S14"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      1377,
+      1003
+     ],
+     "p1": [
+      1377,
+      1195
+     ],
+     "wall_thickness_px": 42
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      978,
+      1253
+     ],
+     "p1": [
+      978,
+      1420
+     ],
+     "wall_thickness_px": 25
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      981,
+      1909
+     ],
+     "p1": [
+      981,
+      2085
+     ],
+     "wall_thickness_px": 25
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      1362,
+      2137
+     ],
+     "p1": [
+      1362,
+      2342
+     ],
+     "wall_thickness_px": 42
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      1545,
+      822
+     ],
+     "p1": [
+      1700,
+      822
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "D6",
+     "kind": "door",
+     "p0": [
+      2195,
+      708
+     ],
+     "p1": [
+      2405,
+      708
+     ],
+     "wall_thickness_px": 18
+    },
+    {
+     "id": "D7",
+     "kind": "door",
+     "p0": [
+      2510,
+      1728
+     ],
+     "p1": [
+      2510,
+      1918
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "D8",
+     "kind": "door",
+     "p0": [
+      2277,
+      2655
+     ],
+     "p1": [
+      2439,
+      2655
+     ],
+     "wall_thickness_px": 30
+    },
+    {
+     "id": "D9",
+     "kind": "door",
+     "p0": [
+      2638,
+      3090
+     ],
+     "p1": [
+      2638,
+      3295
+     ],
+     "wall_thickness_px": 45
+    },
+    {
+     "id": "D10",
+     "kind": "door",
+     "p0": [
+      2661,
+      2928
+     ],
+     "p1": [
+      2874,
+      2928
+     ],
+     "wall_thickness_px": 45
+    },
+    {
+     "id": "D11",
+     "kind": "door",
+     "p0": [
+      1530,
+      3442
+     ],
+     "p1": [
+      1861,
+      3442
+     ],
+     "wall_thickness_px": 20
+    },
+    {
+     "id": "O1",
+     "kind": "opening",
+     "p0": [
+      1903,
+      2928
+     ],
+     "p1": [
+      2237,
+      2928
+     ],
+     "wall_thickness_px": 45
+    },
+    {
+     "id": "O2",
+     "kind": "opening",
+     "p0": [
+      2277,
+      2445
+     ],
+     "p1": [
+      2487,
+      2445
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "O3",
+     "kind": "opening",
+     "p0": [
+      1170,
+      2950
+     ],
+     "p1": [
+      1170,
+      3330
+     ],
+     "wall_thickness_px": 42
+    },
+    {
+     "id": "W1",
+     "kind": "window",
+     "p0": [
+      1192,
+      3410
+     ],
+     "p1": [
+      1505,
+      3410
+     ],
+     "wall_thickness_px": 20
+    },
+    {
+     "id": "W2",
+     "kind": "window",
+     "p0": [
+      249,
+      3912
+     ],
+     "p1": [
+      1157,
+      3912
+     ],
+     "wall_thickness_px": 30
+    },
+    {
+     "id": "W3",
+     "kind": "window",
+     "p0": [
+      1909,
+      3920
+     ],
+     "p1": [
+      2621,
+      3920
+     ],
+     "wall_thickness_px": 30
+    },
+    {
+     "id": "W4",
+     "kind": "window",
+     "p0": [
+      2650,
+      3920
+     ],
+     "p1": [
+      3148,
+      3920
+     ],
+     "wall_thickness_px": 30
+    },
+    {
+     "id": "W5",
+     "kind": "window",
+     "p0": [
+      3132,
+      3348
+     ],
+     "p1": [
+      3132,
+      3542
+     ],
+     "wall_thickness_px": 45
+    },
+    {
+     "id": "W6",
+     "kind": "window",
+     "p0": [
+      2518,
+      1405
+     ],
+     "p1": [
+      2518,
+      1727
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W7",
+     "kind": "window",
+     "p0": [
+      2518,
+      1918
+     ],
+     "p1": [
+      2518,
+      2254
+     ],
+     "wall_thickness_px": 40
+    },
+    {
+     "id": "W8",
+     "kind": "window",
+     "p0": [
+      981,
+      395
+     ],
+     "p1": [
+      1353,
+      395
+     ],
+     "wall_thickness_px": 30
+    },
+    {
+     "id": "W9",
+     "kind": "window",
+     "p0": [
+      351,
+      2108
+     ],
+     "p1": [
+      351,
+      2386
+     ],
+     "wall_thickness_px": 42
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "furniture",
+     "what": "dining table + chairs",
+     "point": [
+      2040,
+      1830
+     ],
+     "bbox": [
+      1845,
+      1552,
+      2240,
+      2108
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed (top)",
+     "point": [
+      600,
+      805
+     ],
+     "bbox": [
+      395,
+      615,
+      805,
+      996
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bed (lower)",
+     "point": [
+      795,
+      2690
+     ],
+     "bbox": [
+      600,
+      2474,
+      990,
+      2899
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "sofa",
+     "point": [
+      688,
+      3050
+     ],
+     "bbox": [
+      468,
+      2963,
+      908,
+      3139
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "sofa (left)",
+     "point": [
+      359,
+      3440
+     ],
+     "bbox": [
+      264,
+      3206,
+      454,
+      3675
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "coffee table",
+     "point": [
+      713,
+      3437
+     ],
+     "bbox": [
+      586,
+      3317,
+      840,
+      3558
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "TV unit",
+     "point": [
+      1105,
+      3528
+     ],
+     "bbox": [
+      1069,
+      3323,
+      1142,
+      3733
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "wardrobe 1",
+     "point": [
+      1290,
+      1376
+     ],
+     "bbox": [
+      1230,
+      1215,
+      1353,
+      1537
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "wardrobe 2",
+     "point": [
+      1290,
+      1917
+     ],
+     "bbox": [
+      1230,
+      1727,
+      1353,
+      2108
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "wardrobe 3",
+     "point": [
+      1290,
+      2686
+     ],
+     "bbox": [
+      1230,
+      2474,
+      1353,
+      2899
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "bench",
+     "point": [
+      1471,
+      1808
+     ],
+     "bbox": [
+      1405,
+      1596,
+      1537,
+      2020
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "kitchen counter",
+     "point": [
+      2255,
+      3530
+     ],
+     "bbox": [
+      2032,
+      3292,
+      2479,
+      3768
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "work-area counter",
+     "point": [
+      3043,
+      3493
+     ],
+     "bbox": [
+      2979,
+      3074,
+      3108,
+      3913
+     ]
+    },
+    {
+     "kind": "stairs",
+     "what": "stair run",
+     "point": [
+      2017,
+      967
+     ],
+     "bbox": [
+      1905,
+      720,
+      2130,
+      1215
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "section line A",
+     "point": [
+      1692,
+      2000
+     ],
+     "bbox": [
+      1686,
+      90,
+      1698,
+      4800
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "section line B",
+     "point": [
+      2073,
+      2000
+     ],
+     "bbox": [
+      2067,
+      90,
+      2079,
+      4800
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "section line C",
+     "point": [
+      1500,
+      591
+     ],
+     "bbox": [
+      60,
+      585,
+      3130,
+      597
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "tree canopies",
+     "point": [
+      900,
+      4500
+     ],
+     "bbox": [
+      200,
+      3950,
+      3600,
+      5000
+     ]
+    }
+   ],
+   "protected": []
+  },
+  "images/10.jpg": {
+   "file": "images/10.jpg",
+   "holdout_input": true,
+   "analysis_scale": 0.4166,
+   "style": "HABS measured drawing (Eames House), 14400x9600 original reduced to 5999x3999 (24 MP); thin single-line walls, floor tile grids everywhere (interior and courtyard), steel I-columns in fully glazed facades, two floors plus title block on one sheet",
+   "roi": [
+    [
+     560,
+     340,
+     5530,
+     1180
+    ]
+   ],
+   "gt_notes": "Labelled region (roi): the overall FIRST floor only (residence, courtyard, studio, end patios). The second-floor plans are not labelled: bedroom partitions and doors are not identifiable with confidence at this resolution. Facades are glazed curtain walls between steel columns: windows are not labelled. Residence ground floor is one open space (living / dining / kitchen / stair hall; the dashed line is the edge of the mezzanine above) plus a utility closet whose entrance is not clear. Studio: main space and the hall south of the bath are one space (partition ends where the mezzanine edge is dashed); closet and bath are separate. Courtyard and both end patios are outdoor paved spaces whose tile grids look like walls (the case this plan tests).",
+   "spaces": [
+    {
+     "id": "S1",
+     "kind": "open_plan",
+     "points": [
+      [
+       1700,
+       700
+      ],
+      [
+       2200,
+       900
+      ],
+      [
+       2750,
+       660
+      ],
+      [
+       2460,
+       960
+      ]
+     ]
+    },
+    {
+     "id": "S2",
+     "kind": "closet",
+     "points": [
+      [
+       2465,
+       460
+      ]
+     ]
+    },
+    {
+     "id": "S3",
+     "kind": "open_plan",
+     "points": [
+      [
+       4700,
+       700
+      ],
+      [
+       4150,
+       900
+      ],
+      [
+       4250,
+       660
+      ]
+     ]
+    },
+    {
+     "id": "S4",
+     "kind": "closet",
+     "points": [
+      [
+       4100,
+       480
+      ]
+     ]
+    },
+    {
+     "id": "S5",
+     "kind": "wet",
+     "points": [
+      [
+       4063,
+       620
+      ]
+     ]
+    },
+    {
+     "id": "S6",
+     "kind": "outdoor",
+     "points": [
+      [
+       3150,
+       450
+      ],
+      [
+       3800,
+       950
+      ]
+     ]
+    },
+    {
+     "id": "S7",
+     "kind": "outdoor",
+     "points": [
+      [
+       1100,
+       600
+      ]
+     ]
+    },
+    {
+     "id": "S8",
+     "kind": "outdoor",
+     "points": [
+      [
+       5120,
+       700
+      ]
+     ]
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Living room",
+     "printed": null,
+     "point": [
+      1700,
+      700
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Dining",
+     "printed": null,
+     "point": [
+      2200,
+      900
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Kitchen",
+     "printed": null,
+     "point": [
+      2750,
+      660
+     ],
+     "space": "S1"
+    },
+    {
+     "name": "Utility",
+     "printed": null,
+     "point": [
+      2465,
+      460
+     ],
+     "space": "S2"
+    },
+    {
+     "name": "Studio",
+     "printed": null,
+     "point": [
+      4700,
+      700
+     ],
+     "space": "S3"
+    },
+    {
+     "name": "Closet",
+     "printed": null,
+     "point": [
+      4100,
+      480
+     ],
+     "space": "S4"
+    },
+    {
+     "name": "Bath",
+     "printed": null,
+     "point": [
+      4063,
+      620
+     ],
+     "space": "S5"
+    },
+    {
+     "name": "Courtyard",
+     "printed": null,
+     "point": [
+      3150,
+      450
+     ],
+     "space": "S6"
+    },
+    {
+     "name": "Patio",
+     "printed": null,
+     "point": [
+      1100,
+      600
+     ],
+     "space": "S7"
+    },
+    {
+     "name": "Patio",
+     "printed": null,
+     "point": [
+      5120,
+      700
+     ],
+     "space": "S8"
+    }
+   ],
+   "openings": [
+    {
+     "id": "D1",
+     "kind": "door",
+     "p0": [
+      2417,
+      1005
+     ],
+     "p1": [
+      2518,
+      1005
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "D2",
+     "kind": "door",
+     "p0": [
+      2990,
+      383
+     ],
+     "p1": [
+      2990,
+      494
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "D3",
+     "kind": "door",
+     "p0": [
+      4130,
+      590
+     ],
+     "p1": [
+      4222,
+      590
+     ],
+     "wall_thickness_px": 12
+    },
+    {
+     "id": "D4",
+     "kind": "door",
+     "p0": [
+      4131,
+      596
+     ],
+     "p1": [
+      4131,
+      657
+     ],
+     "wall_thickness_px": 10
+    },
+    {
+     "id": "D5",
+     "kind": "door",
+     "p0": [
+      3905,
+      852
+     ],
+     "p1": [
+      3905,
+      956
+     ],
+     "wall_thickness_px": 12
+    }
+   ],
+   "nonstructural": [
+    {
+     "kind": "stairs",
+     "what": "spiral stair (residence)",
+     "point": [
+      2440,
+      815
+     ],
+     "bbox": [
+      2356,
+      724,
+      2527,
+      907
+     ]
+    },
+    {
+     "kind": "stairs",
+     "what": "stair (studio)",
+     "point": [
+      4570,
+      940
+     ],
+     "bbox": [
+      4478,
+      901,
+      4661,
+      980
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "kitchen counter",
+     "point": [
+      2680,
+      565
+     ],
+     "bbox": [
+      2530,
+      529,
+      2832,
+      602
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "kitchen side counter",
+     "point": [
+      2583,
+      757
+     ],
+     "bbox": [
+      2530,
+      724,
+      2637,
+      791
+     ]
+    },
+    {
+     "kind": "furniture",
+     "what": "built-in bench",
+     "point": [
+      2225,
+      764
+     ],
+     "bbox": [
+      2094,
+      706,
+      2356,
+      822
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "storage wall (diagonal)",
+     "point": [
+      2225,
+      434
+     ],
+     "bbox": [
+      2094,
+      383,
+      2356,
+      486
+     ]
+    },
+    {
+     "kind": "shelving",
+     "what": "cabinet (kitchen east)",
+     "point": [
+      2962,
+      663
+     ],
+     "bbox": [
+      2929,
+      535,
+      2996,
+      791
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "studio vanity",
+     "point": [
+      4014,
+      763
+     ],
+     "bbox": [
+      3899,
+      730,
+      4130,
+      797
+     ]
+    },
+    {
+     "kind": "counter",
+     "what": "studio cabinet",
+     "point": [
+      4289,
+      760
+     ],
+     "bbox": [
+      4222,
+      724,
+      4356,
+      797
+     ]
+    },
+    {
+     "kind": "fixture",
+     "what": "bath tub (studio)",
+     "point": [
+      3940,
+      657
+     ],
+     "bbox": [
+      3905,
+      596,
+      3978,
+      718
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "courtyard block",
+     "point": [
+      3500,
+      705
+     ],
+     "bbox": [
+      3330,
+      600,
+      3675,
+      810
+     ]
+    },
+    {
+     "kind": "hatching",
+     "what": "floor tile grid (residence)",
+     "point": [
+      1800,
+      500
+     ],
+     "bbox": [
+      1385,
+      383,
+      2996,
+      1005
+     ]
+    },
+    {
+     "kind": "hatching",
+     "what": "floor tile grid (courtyard)",
+     "point": [
+      3150,
+      500
+     ],
+     "bbox": [
+      3005,
+      383,
+      3895,
+      1005
+     ]
+    },
+    {
+     "kind": "hatching",
+     "what": "floor tile grid (studio)",
+     "point": [
+      4700,
+      500
+     ],
+     "bbox": [
+      3905,
+      383,
+      5051,
+      1005
+     ]
+    },
+    {
+     "kind": "other",
+     "what": "eave / walkway strip",
+     "point": [
+      3000,
+      1110
+     ],
+     "bbox": [
+      1155,
+      1056,
+      4815,
+      1164
+     ]
+    }
+   ],
+   "protected": []
+  }
+ },
+ "review": {
+  "status": "labelled by Claude from the raw analysis frames (scripts/diagnostics/label_grid.py); awaiting the owner's review before the one-time freeze",
+  "review_images": "output/holdout_review/<plan>_review.png (scripts/diagnostics/holdout_review.py)"
+ },
+ "excluded": {
+  "images/09.png": "duplicate of development plan Test Cases/9.jpg (perceptual similarity 1.00, novelty check 2026-10-06)"
+ }
+}

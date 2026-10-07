@@ -1,0 +1,3139 @@
+{
+ "notes": "PDF development pages with hand-placed ground truth (2026-10-07). Coordinates are pixels of the production analysis render (ingest.pdf render_page at the page's analysis DPI). 'rooms' are points inside rooms; points sharing a 'group' are one room or one open-plan area and must be ONE space (several points detect splits). 'kind': room | outdoor (balcony/terrace: must not share a space with an interior room; may be outside every space). 'may_share': pairs of groups allowed to be one space (a doorless passage). Seeded from the PDF text layer, completed and checked by eye on the drawing (stroked labels such as W.I.C. and unnamed closets placed by hand). Not a hold-out: these pages are development cases.",
+ "plans": {
+  "22.pdf:6": {
+   "style": "CAD sheet, multi-unit, hollow walls (heavy pen), balconies, stroked text",
+   "rooms": [
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      1227
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      1252
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      1236
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1886,
+      914
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      1579
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      1554
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      1542
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1850,
+      1886
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      2362
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      2337
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      2450
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1850,
+      2664
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      3578,
+      1367
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3686,
+      1113
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      1107
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Entry",
+     "point": [
+      3360,
+      1080
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      3629,
+      2036
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3434,
+      1865
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      2061
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Living",
+     "point": [
+      3629,
+      2335
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3390,
+      2400
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      2379
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      851
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1500,
+      700
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1886,
+      743
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      785
+     ],
+     "kind": "room",
+     "printed": "BA-1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2258,
+      741
+     ],
+     "kind": "room",
+     "printed": "BA-2"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2200,
+      943
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2524,
+      835
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      2714,
+      817
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      1983
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1490,
+      2120
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1880,
+      2050
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      2014
+     ],
+     "kind": "room",
+     "printed": "BA-3"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2287,
+      2012
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2440,
+      1967
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      2738
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1490,
+      2850
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1880,
+      2790
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-5"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2143,
+      2636
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2350,
+      2738
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2193,
+      2800
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2535,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-6"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2536,
+      2028
+     ],
+     "kind": "room",
+     "printed": "BA-4"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3676,
+      890
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3398,
+      833
+     ],
+     "kind": "room",
+     "printed": "BA-1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3511,
+      793
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2829,
+      1047
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2923,
+      1274
+     ],
+     "kind": "room",
+     "printed": "BA-11"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      3021,
+      1243
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3230,
+      1324
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3017,
+      1383
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3663,
+      1684
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3437,
+      1618
+     ],
+     "kind": "room",
+     "printed": "BA-9"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3153,
+      1595
+     ],
+     "kind": "room",
+     "printed": "BA-10"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3700,
+      1771
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3129,
+      1690
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3198,
+      1853
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2971,
+      1921
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3007,
+      2479
+     ],
+     "kind": "room",
+     "printed": "BA-8"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2914,
+      2354
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      3007,
+      2357
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3083,
+      2738
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2929,
+      2757
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3342,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-7"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3615,
+      2729
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3600,
+      2607
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      2725,
+      1350
+     ],
+     "group": "corr",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      2690,
+      2250
+     ],
+     "group": "corr",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Elevator",
+     "point": [
+      2963,
+      1535
+     ],
+     "kind": "room",
+     "printed": "ELEV."
+    },
+    {
+     "name": "Trash room",
+     "point": [
+      2852,
+      1745
+     ],
+     "kind": "room",
+     "printed": "TRASH"
+    },
+    {
+     "name": "Stair",
+     "point": [
+      3100,
+      886
+     ],
+     "kind": "room",
+     "printed": "STAIR#1"
+    },
+    {
+     "name": "Stair",
+     "point": [
+      2768,
+      2898
+     ],
+     "kind": "room",
+     "printed": "STAIR#2"
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      1298
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      1822
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      2590
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      1186
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      1932
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      2250
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    }
+   ],
+   "may_share": []
+  },
+  "3.pdf:4": {
+   "style": "CAD sheet, hatched walls, single dwelling, rotated page",
+   "rooms": [
+    {
+     "name": "Walk-in closet",
+     "point": [
+      950,
+      760
+     ],
+     "kind": "room",
+     "printed": "WIC"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1610,
+      800
+     ],
+     "kind": "room",
+     "printed": "BEDROOM #2"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2383,
+      800
+     ],
+     "group": "open",
+     "kind": "room",
+     "printed": "KITCHEN"
+    },
+    {
+     "name": "Dining room",
+     "point": [
+      3100,
+      900
+     ],
+     "group": "open",
+     "kind": "room",
+     "printed": "DINING ROOM"
+    },
+    {
+     "name": "Pantry",
+     "point": [
+      2514,
+      1210
+     ],
+     "kind": "room",
+     "printed": "PANTRY"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2355,
+      1225
+     ],
+     "kind": "room",
+     "printed": "COAT CLOSET"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      964,
+      1380
+     ],
+     "kind": "room",
+     "printed": "BEDROOM #1",
+     "group": "b1"
+    },
+    {
+     "name": "Storage",
+     "point": [
+      1403,
+      1400
+     ],
+     "kind": "room",
+     "printed": "STORAGE"
+    },
+    {
+     "name": "Living room",
+     "point": [
+      2924,
+      1720
+     ],
+     "group": "open",
+     "kind": "room",
+     "printed": "LIVING ROOM"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2130,
+      1830
+     ],
+     "kind": "room",
+     "printed": "BEDROOM #3"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      1511,
+      1880
+     ],
+     "kind": "room",
+     "printed": "BATH #2"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      951,
+      1960
+     ],
+     "kind": "room",
+     "printed": "BATH #1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      1532,
+      1245
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2108,
+      1239
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Hallway",
+     "point": [
+      1622,
+      1544
+     ],
+     "group": "hall",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      1803,
+      1961
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living room",
+     "point": [
+      2750,
+      1500
+     ],
+     "group": "open",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2140,
+      1110
+     ],
+     "group": "open",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      700,
+      1150
+     ],
+     "group": "b1",
+     "kind": "room",
+     "printed": null
+    }
+   ],
+   "may_share": [
+    [
+     "hall",
+     "open"
+    ]
+   ]
+  },
+  "22.pdf:7": {
+   "style": "CAD sheet, multi-unit, hollow walls (heavy pen), balconies, stroked text",
+   "rooms": [
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      1227
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      1252
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      1236
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1886,
+      914
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      1579
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      1554
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      1542
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1850,
+      1886
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      2362
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      2337
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      2450
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1850,
+      2664
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      3578,
+      1367
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3686,
+      1113
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      1107
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Entry",
+     "point": [
+      3360,
+      1080
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      3629,
+      2036
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3434,
+      1865
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      2061
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Living",
+     "point": [
+      3629,
+      2335
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3390,
+      2400
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      2379
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      851
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1500,
+      700
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1886,
+      743
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      785
+     ],
+     "kind": "room",
+     "printed": "BA-1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2258,
+      741
+     ],
+     "kind": "room",
+     "printed": "BA-2"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2200,
+      943
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2524,
+      835
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      2714,
+      817
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      1983
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1490,
+      2120
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1880,
+      2050
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      2014
+     ],
+     "kind": "room",
+     "printed": "BA-3"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2287,
+      2012
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2440,
+      1967
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      2738
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1490,
+      2850
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1880,
+      2790
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-5"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2143,
+      2636
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2350,
+      2738
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2193,
+      2800
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2535,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-6"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2536,
+      2028
+     ],
+     "kind": "room",
+     "printed": "BA-4"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3676,
+      890
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3398,
+      833
+     ],
+     "kind": "room",
+     "printed": "BA-1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3511,
+      793
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2829,
+      1047
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2923,
+      1274
+     ],
+     "kind": "room",
+     "printed": "BA-11"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      3021,
+      1243
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3230,
+      1324
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3017,
+      1383
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3663,
+      1684
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3437,
+      1618
+     ],
+     "kind": "room",
+     "printed": "BA-9"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3153,
+      1595
+     ],
+     "kind": "room",
+     "printed": "BA-10"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3700,
+      1771
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3129,
+      1690
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3198,
+      1853
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2971,
+      1921
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3007,
+      2479
+     ],
+     "kind": "room",
+     "printed": "BA-8"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2914,
+      2354
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      3007,
+      2357
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3083,
+      2738
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2929,
+      2757
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3342,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-7"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3615,
+      2729
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3600,
+      2607
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      2725,
+      1350
+     ],
+     "group": "corr",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      2690,
+      2250
+     ],
+     "group": "corr",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Elevator",
+     "point": [
+      2963,
+      1535
+     ],
+     "kind": "room",
+     "printed": "ELEV."
+    },
+    {
+     "name": "Trash room",
+     "point": [
+      2852,
+      1745
+     ],
+     "kind": "room",
+     "printed": "TRASH"
+    },
+    {
+     "name": "Stair",
+     "point": [
+      3100,
+      886
+     ],
+     "kind": "room",
+     "printed": "STAIR#1"
+    },
+    {
+     "name": "Stair",
+     "point": [
+      2768,
+      2898
+     ],
+     "kind": "room",
+     "printed": "STAIR#2"
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      1298
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      1822
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      2590
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      1186
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      1932
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      2250
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    }
+   ],
+   "may_share": [],
+   "gt_note": "same typical floor as 22.pdf:6 (plan drawing identical except unit numbers and minor details; checked by ink difference); points reused"
+  },
+  "22.pdf:8": {
+   "style": "CAD sheet, multi-unit, hollow walls (heavy pen), balconies, stroked text",
+   "rooms": [
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      1227
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      1252
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      1236
+     ],
+     "group": "u201",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1886,
+      914
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      1579
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      1554
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      1542
+     ],
+     "group": "u202",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1850,
+      1886
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      2362
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      2337
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      2450
+     ],
+     "group": "u203",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1850,
+      2664
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      3578,
+      1367
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3686,
+      1113
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      1107
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Entry",
+     "point": [
+      3360,
+      1080
+     ],
+     "group": "u206",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      3629,
+      2036
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3434,
+      1865
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      2061
+     ],
+     "group": "u205",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Living",
+     "point": [
+      3629,
+      2335
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3390,
+      2400
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      2379
+     ],
+     "group": "u204",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      851
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1500,
+      700
+     ],
+     "group": "b201-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1886,
+      743
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      785
+     ],
+     "kind": "room",
+     "printed": "BA-1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2258,
+      741
+     ],
+     "kind": "room",
+     "printed": "BA-2"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2200,
+      943
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2524,
+      835
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      2714,
+      817
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      1983
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1490,
+      2120
+     ],
+     "group": "b202-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1880,
+      2050
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      2014
+     ],
+     "kind": "room",
+     "printed": "BA-3"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2287,
+      2012
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2440,
+      1967
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      2738
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1490,
+      2850
+     ],
+     "group": "b203-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1880,
+      2790
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-5"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2143,
+      2636
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2350,
+      2738
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2193,
+      2800
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2535,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-6"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2536,
+      2028
+     ],
+     "kind": "room",
+     "printed": "BA-4"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3676,
+      890
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3398,
+      833
+     ],
+     "kind": "room",
+     "printed": "BA-1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3511,
+      793
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2829,
+      1047
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2923,
+      1274
+     ],
+     "kind": "room",
+     "printed": "BA-11"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      3021,
+      1243
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3230,
+      1324
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3017,
+      1383
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3663,
+      1684
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3437,
+      1618
+     ],
+     "kind": "room",
+     "printed": "BA-9"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3153,
+      1595
+     ],
+     "kind": "room",
+     "printed": "BA-10"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3700,
+      1771
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3129,
+      1690
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3198,
+      1853
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2971,
+      1921
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3007,
+      2479
+     ],
+     "kind": "room",
+     "printed": "BA-8"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2914,
+      2354
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      3007,
+      2357
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3083,
+      2738
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2929,
+      2757
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3342,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-7"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3615,
+      2729
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3600,
+      2607
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      2725,
+      1350
+     ],
+     "group": "corr",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      2690,
+      2250
+     ],
+     "group": "corr",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Elevator",
+     "point": [
+      2963,
+      1535
+     ],
+     "kind": "room",
+     "printed": "ELEV."
+    },
+    {
+     "name": "Trash room",
+     "point": [
+      2852,
+      1745
+     ],
+     "kind": "room",
+     "printed": "TRASH"
+    },
+    {
+     "name": "Stair",
+     "point": [
+      3100,
+      886
+     ],
+     "kind": "room",
+     "printed": "STAIR#1"
+    },
+    {
+     "name": "Stair",
+     "point": [
+      2768,
+      2898
+     ],
+     "kind": "room",
+     "printed": "STAIR#2"
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      1298
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      1822
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      1409,
+      2590
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      1186
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      1932
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      2250
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    }
+   ],
+   "may_share": [],
+   "gt_note": "same typical floor as 22.pdf:6 (differences: unit numbers, east balcony edges, stair detail; checked by ink difference overlay); points reused"
+  },
+  "22.pdf:5": {
+   "style": "CAD sheet, ground floor: 5 units, lobby, patios; hollow walls (heavy pen)",
+   "rooms": [
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      1227
+     ],
+     "group": "u101",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      1252
+     ],
+     "group": "u101",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      1236
+     ],
+     "group": "u101",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1886,
+      914
+     ],
+     "group": "b101-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      1579
+     ],
+     "group": "u102",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      1554
+     ],
+     "group": "u102",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      1542
+     ],
+     "group": "u102",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1850,
+      1886
+     ],
+     "group": "b102-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      1772,
+      2362
+     ],
+     "group": "u103",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      2110,
+      2337
+     ],
+     "group": "u103",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      2512,
+      2450
+     ],
+     "group": "u103",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1850,
+      2664
+     ],
+     "group": "b103-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Living",
+     "point": [
+      3629,
+      2036
+     ],
+     "group": "u105",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3434,
+      1865
+     ],
+     "group": "u105",
+     "kind": "room",
+     "printed": "DINING"
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      2061
+     ],
+     "group": "u105",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Living",
+     "point": [
+      3629,
+      2335
+     ],
+     "group": "u104",
+     "kind": "room",
+     "printed": "LIVING"
+    },
+    {
+     "name": "Dining",
+     "point": [
+      3390,
+      2400
+     ],
+     "group": "u104",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Kitchen",
+     "point": [
+      3174,
+      2379
+     ],
+     "group": "u104",
+     "kind": "room",
+     "printed": "KIT"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      851
+     ],
+     "group": "b101-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1500,
+      700
+     ],
+     "group": "b101-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1886,
+      743
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      785
+     ],
+     "kind": "room",
+     "printed": "BA-1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2258,
+      741
+     ],
+     "kind": "room",
+     "printed": "BA-2"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2200,
+      943
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2524,
+      835
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      2714,
+      817
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      1983
+     ],
+     "group": "b102-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1490,
+      2120
+     ],
+     "group": "b102-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1880,
+      2050
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      2014
+     ],
+     "kind": "room",
+     "printed": "BA-3"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2287,
+      2012
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2440,
+      1967
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1625,
+      2738
+     ],
+     "group": "b103-1",
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      1490,
+      2850
+     ],
+     "group": "b103-1",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Walk-in closet",
+     "point": [
+      1880,
+      2790
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2027,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-5"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2143,
+      2636
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      2350,
+      2738
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2193,
+      2800
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2535,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-6"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      2536,
+      2028
+     ],
+     "kind": "room",
+     "printed": "BA-4"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3663,
+      1684
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3437,
+      1618
+     ],
+     "kind": "room",
+     "printed": "BA-9"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3153,
+      1595
+     ],
+     "kind": "room",
+     "printed": "BA-10"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3700,
+      1771
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3129,
+      1690
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3198,
+      1853
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      2971,
+      1921
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3007,
+      2479
+     ],
+     "kind": "room",
+     "printed": "BA-8"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2914,
+      2354
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Laundry",
+     "point": [
+      3007,
+      2357
+     ],
+     "kind": "room",
+     "printed": "W/D"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3083,
+      2738
+     ],
+     "kind": "room",
+     "printed": "BDRM.#2"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      2929,
+      2757
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Bathroom",
+     "point": [
+      3342,
+      2775
+     ],
+     "kind": "room",
+     "printed": "BA-7"
+    },
+    {
+     "name": "Bedroom",
+     "point": [
+      3615,
+      2729
+     ],
+     "kind": "room",
+     "printed": "BDRM.#1"
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3600,
+      2607
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      2725,
+      1350
+     ],
+     "group": "corr",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Corridor",
+     "point": [
+      2690,
+      2250
+     ],
+     "group": "corr",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Elevator",
+     "point": [
+      2963,
+      1535
+     ],
+     "kind": "room",
+     "printed": "ELEV."
+    },
+    {
+     "name": "Trash room",
+     "point": [
+      2852,
+      1745
+     ],
+     "kind": "room",
+     "printed": "TRASH"
+    },
+    {
+     "name": "Stair",
+     "point": [
+      3100,
+      886
+     ],
+     "kind": "room",
+     "printed": "STAIR#1"
+    },
+    {
+     "name": "Stair",
+     "point": [
+      2768,
+      2898
+     ],
+     "kind": "room",
+     "printed": "STAIR#2"
+    },
+    {
+     "name": "Patio",
+     "point": [
+      1409,
+      1298
+     ],
+     "kind": "outdoor",
+     "printed": "PATIO"
+    },
+    {
+     "name": "Patio",
+     "point": [
+      1409,
+      1822
+     ],
+     "kind": "outdoor",
+     "printed": "PATIO"
+    },
+    {
+     "name": "Patio",
+     "point": [
+      1409,
+      2590
+     ],
+     "kind": "outdoor",
+     "printed": "PATIO"
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      1932
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Balcony",
+     "point": [
+      3853,
+      2250
+     ],
+     "kind": "outdoor",
+     "printed": "BAL."
+    },
+    {
+     "name": "Lobby",
+     "point": [
+      3359,
+      1222
+     ],
+     "group": "lobby",
+     "kind": "room",
+     "printed": "LOBBY"
+    },
+    {
+     "name": "Lobby",
+     "point": [
+      3100,
+      1150
+     ],
+     "group": "lobby",
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3840,
+      2553
+     ],
+     "kind": "room",
+     "printed": null
+    },
+    {
+     "name": "Closet",
+     "point": [
+      3840,
+      2698
+     ],
+     "kind": "room",
+     "printed": null
+    }
+   ],
+   "may_share": [],
+   "gt_note": "units 101-105 and the core repeat 201-205 of 22.pdf:6 at the same coordinates (checked on the drawing); lobby and unit 104 closets placed by hand"
+  }
+ }
+}

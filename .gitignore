@@ -6,5 +6,12 @@ venv/
 output/
 output_test/
 instance/
+output_v2/
+dist/
+data/
+/*.zip
 .DS_Store
 *.egg-info/
+
+# benchmark OCR cache (benchmark/ocr_cache.py)
+benchmark/.ocr_cache/

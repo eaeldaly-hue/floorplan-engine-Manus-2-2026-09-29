@@ -1,87 +1,221 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f8fa">
-  <title>قارئ المخططات — تحليل الغرف</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <meta name="theme-color" content="#f3f5f8">
+  <title>Floor Plan Engine — Analysis Workbench</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="/" aria-label="الصفحة الرئيسية">
-        <span class="brand-mark" aria-hidden="true">⌂</span>
-        <span>مِساحة <small>قارئ المخططات</small></span>
+      <a class="brand" href="/" aria-label="Floor Plan Engine home">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="3" y="3" width="26" height="26" rx="3" fill="none" stroke="currentColor" stroke-width="3"/>
+          <path d="M3 15h10v14M13 3v6M19 15h10M19 15v5" fill="none" stroke="currentColor" stroke-width="3"/>
+        </svg>
+        <span class="brand-text">Floor Plan Engine <small>Analysis Workbench</small></span>
       </a>
-      <div class="status" id="health-status"><span class="status-dot"></span><span>جاري فحص محرك التحليل…</span></div>
+      <div class="health" id="health-status" data-state="pending">
+        <span class="health-dot" aria-hidden="true"></span>
+        <span class="health-text">Checking engine…</span>
+      </div>
     </div>
   </header>
 
-  <main class="container">
-    <section class="intro">
-      <div class="eyebrow">تحليل هندسي للمخططات</div>
-      <h1>من المخطط إلى تفاصيل كل غرفة</h1>
-      <p>ارفع صورة أو ملف PDF. يستخرج النظام أسماء الغرف وأبعادها، ويحدد حدودًا مرئية لكل غرفة، ثم يعرض المساحة المطبوعة أو تقديرًا واضح المصدر.</p>
-    </section>
-
-    <section class="upload-panel panel" aria-labelledby="upload-title">
-      <div class="section-heading">
-        <div><span class="step">01</span><h2 id="upload-title">ارفع مخطط الطابق</h2></div>
-        <span class="file-hint">PNG · JPG · TIFF · PDF — حتى 20 MB</span>
-      </div>
-      <form id="upload-form">
+  <main class="workbench">
+    <section class="card plan-bar" aria-labelledby="upload-title">
+      <form id="upload-form" class="upload-row">
+        <div class="plan-bar-title">
+          <h2 id="upload-title">Floor plan</h2>
+          <span class="card-hint">PNG · JPG · BMP · TIFF · PDF</span>
+        </div>
         <label class="dropzone" id="dropzone" for="plan-file">
-          <input id="plan-file" name="file" type="file" accept="image/png,image/jpeg,image/tiff,image/bmp,application/pdf,.tif,.tiff">
-          <span class="upload-icon" aria-hidden="true">↑</span>
-          <strong id="file-title">اسحب الملف هنا أو اختره من جهازك</strong>
-          <span id="file-subtitle">يفضّل مخططًا واضحًا ومستقيمًا مع ظهور النص والأبعاد</span>
-          <span class="file-name" id="file-name"></span>
+          <input id="plan-file" name="file" type="file" accept="image/png,image/jpeg,image/bmp,image/tiff,application/pdf,.png,.jpg,.jpeg,.bmp,.tif,.tiff,.pdf">
+          <svg class="dropzone-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="dropzone-text">
+            <strong id="file-title">Drop a floor plan here</strong>
+            <span id="file-subtitle">or click to browse · images up to 20 MB · PDF up to 100 MB</span>
+          </span>
         </label>
-        <div class="form-actions">
-          <span class="privacy-note">تُعالج الصورة على خادم التطبيق ولا تُحفَظ النسخة الأصلية.</span>
-          <button class="secondary-button" id="sample-button" type="button">جرّب على المخطط التجريبي</button>
-          <button class="primary-button" id="analyze-button" type="submit" disabled>حلّل المخطط <span aria-hidden="true">←</span></button>
+        <div class="file-chip" id="file-chip" hidden>
+          <img id="file-thumb" alt="">
+          <div class="file-chip-text">
+            <strong id="file-name"></strong>
+            <span id="file-meta"></span>
+          </div>
+          <button class="text-button" id="replace-file" type="button">Replace</button>
+          <button class="icon-button" id="clear-file" type="button" aria-label="Remove file">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="upload-actions">
+          <button class="button button-primary" id="analyze-button" type="submit" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 13h7v7h-7zM13 4h7v4M4 13h4v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            <span id="analyze-label">Analyze floor plan</span>
+          </button>
+          <button class="button button-secondary" id="sample-button" type="button">Load sample plan</button>
+          <label class="clean-toggle" title="Experimental: clean the plan (keep walls, doors, windows; suppress text, dimensions, furniture) before recognition">
+            <input type="checkbox" id="cleaning-toggle"> Clean plan first
+          </label>
+        </div>
+
+        <div class="status-card" id="status-card" data-state="idle" hidden aria-live="polite">
+          <div class="status-row">
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="status-icon" aria-hidden="true"></span>
+            <div class="status-text">
+              <strong id="status-title"></strong>
+              <span id="status-detail"></span>
+            </div>
+            <span class="status-elapsed" id="status-elapsed"></span>
+          </div>
+          <div class="progress" id="status-progress"><span></span></div>
         </div>
       </form>
-      <div class="error-box" id="error-box" role="alert" hidden></div>
-      <div class="progress-box" id="progress-box" hidden><span class="spinner"></span><span>نقرأ النصوص ونستخرج حدود الغرف… قد يستغرق ذلك لحظات.</span></div>
+      <section class="pdf-picker" id="pdf-picker" hidden aria-labelledby="pdf-picker-title">
+        <div class="pdf-picker-head">
+          <div>
+            <h3 id="pdf-picker-title">Choose the floor-plan page(s)</h3>
+            <span class="card-hint" id="pdf-picker-meta"></span>
+          </div>
+          <div class="pdf-picker-actions">
+            <span class="pdf-selected" id="pdf-selected">No page selected</span>
+            <button class="text-button" id="pdf-clear-selection" type="button">Clear selection</button>
+            <button class="text-button" id="pdf-toggle" type="button" aria-controls="pdf-pages" aria-expanded="true">Hide pages</button>
+          </div>
+        </div>
+        <div class="pdf-pages" id="pdf-pages" role="group" aria-label="PDF pages"></div>
+      </section>
+      <section class="alert alert-error" id="error-box" role="alert" hidden></section>
     </section>
 
-    <section class="results" id="results" hidden aria-live="polite">
-      <div class="results-heading">
-        <div><span class="step">02</span><h2>نتيجة التحليل</h2><p class="source-name" id="source-name"></p></div>
-        <button class="secondary-button" id="new-analysis" type="button">تحليل مخطط آخر</button>
-      </div>
-
-      <div class="summary-grid" id="summary-grid"></div>
-
-      <div class="result-layout">
-        <section class="panel overlay-panel">
-          <div class="panel-title"><div><h3>حدود الغرف على المخطط</h3><p>الأخضر: منطقة جدران مكتشفة · البرتقالي: حدود مستنتجة من الأبعاد</p></div><div class="result-downloads"><a id="download-overlay" class="text-link" download="floorplan-rooms.png">تنزيل المعاينة</a><a id="download-json" class="text-link" download="floorplan-analysis.json">تنزيل بيانات الغرف JSON</a></div></div>
-          <div class="overlay-frame"><img id="overlay-image" alt="مخطط الطابق مع حدود الغرف المكتشفة"></div>
-          <div class="warnings" id="warnings" hidden></div>
-        </section>
-        <section class="panel room-panel">
-          <div class="panel-title room-title"><div><h3>الغرف المستخرجة</h3><p id="rooms-subtitle"></p></div><span class="count-badge" id="room-count"></span></div>
-          <div class="room-list" id="room-list"></div>
-        </section>
-      </div>
-      <section class="panel unlabeled-panel" id="unlabeled-panel" hidden>
-        <div class="panel-title"><div><h3>مناطق لم يُقرأ اسمها</h3><p>مناطق محاطة بجدران لكن لم يرتبط بها نص غرفة واضح.</p></div></div>
-        <div class="room-list" id="unlabeled-list"></div>
+    <div class="workspace">
+      <section class="card viewer-card" aria-label="Floor plan viewer">
+        <div class="viewer-toolbar">
+          <div class="segmented" id="view-tabs" role="group" aria-label="Analysis view">
+            <button type="button" data-view="rooms" disabled>Rooms</button>
+            <button type="button" data-view="openings" disabled>Openings</button>
+            <button type="button" data-view="combined" disabled>Combined</button>
+            <button type="button" data-view="cleaned" disabled title="The cleaned architectural plan the recognition ran on (enable 'Clean plan first')">Cleaned</button>
+            <button type="button" data-view="elements" disabled title="Every element of the drawing by type: kept (walls, doors, windows) and suppressed">Elements</button>
+            <button type="button" data-view="walls" disabled class="is-unavailable"
+              title="Not available: /api/analyze does not return wall geometry (no segments or wall mask), so there is nothing to draw.">Walls <span class="na">n/a</span></button>
+          </div>
+          <div class="toolbar-group">
+            <div class="segmented" id="mode-tabs" role="group" aria-label="Layout">
+              <button type="button" data-mode="original" class="is-active">Original</button>
+              <button type="button" data-mode="split" disabled>Side by side</button>
+              <button type="button" data-mode="analysis" disabled>Analysis</button>
+            </div>
+            <div class="segmented segmented-compact" id="zoom-tabs" role="group" aria-label="Zoom">
+              <button type="button" data-zoom="1" class="is-active">Fit</button>
+              <button type="button" data-zoom="1.5">150%</button>
+              <button type="button" data-zoom="2">200%</button>
+              <button type="button" data-zoom="3">300%</button>
+            </div>
+          </div>
+        </div>
+        <div class="viewer" id="viewer">
+          <div class="viewer-empty" id="viewer-empty">
+            <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="6" width="52" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M6 30h18v28M24 6v10M36 30h22M36 30v9" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>
+            <strong>No floor plan loaded</strong>
+            <span>Upload a plan or load the sample to preview it here.</span>
+          </div>
+          <div class="stage" id="stage" hidden></div>
+        </div>
+        <div class="viewer-footer">
+          <div class="layer-bar" id="layer-bar" hidden>
+            <span class="layer-bar-label">Layers</span>
+            <label><input type="checkbox" data-layer="rooms" checked><i class="swatch swatch-room"></i>Rooms</label>
+            <label><input type="checkbox" data-layer="unlabeled" checked><i class="swatch swatch-space"></i>Unlabeled spaces</label>
+            <label><input type="checkbox" data-layer="door" checked><i class="swatch swatch-door"></i>Doors</label>
+            <label><input type="checkbox" data-layer="window" checked><i class="swatch swatch-window"></i>Windows</label>
+            <label><input type="checkbox" data-layer="opening" checked><i class="swatch swatch-opening"></i>Unclassified</label>
+            <label><input type="checkbox" data-layer="labels" checked>Labels</label>
+          </div>
+          <div class="legend" id="legend" hidden></div>
+        </div>
       </section>
-      <section class="panel openings-panel" id="openings-panel" hidden>
-        <div class="panel-title"><div><h3>الأبواب والشبابيك المحتملة</h3><p>الأخضر: باب محتمل · الأزرق: شباك محتمل · البرتقالي: فتحة تحتاج مراجعة. الأرقام على الصورة تطابق البطاقات.</p></div><a id="download-openings-overlay" class="text-link" download="floorplan-openings.png">تنزيل طبقة الفتحات</a></div>
-        <div class="opening-summary" id="opening-summary"></div>
-        <div class="overlay-frame openings-frame"><img id="openings-overlay-image" alt="مخطط الطابق مع مواضع الأبواب والشبابيك المحتملة"></div>
-        <div class="opening-list" id="opening-list"></div>
-      </section>
-      <p class="disclaimer">المساحة الفيزيائية مأخوذة من الأبعاد المطبوعة في المخطط. إذا لم يتوفر بُعد، قد يظهر تقدير من مقياس الصورة؛ راجع طريقة الحد والثقة قبل استخدام النتائج في مخططات تنفيذية.</p>
-    </section>
 
-    <footer>محرك تحليل محلي · لا يُغني عن مراجعة مهندس للمخطط قبل التنفيذ أو التسعير.</footer>
+      <aside class="card results-panel" id="results-panel" aria-labelledby="results-title">
+        <div class="results-head">
+          <h2 id="results-title">Results</h2>
+          <span class="card-hint" id="metrics-source"></span>
+          <div class="page-tabs" id="page-tabs" hidden role="tablist" aria-label="Analysed PDF pages"></div>
+          <nav class="results-nav" id="results-nav" hidden aria-label="Jump to section">
+            <button type="button" class="nav-chip" data-target="rooms-section">Rooms <span id="nav-rooms-count"></span></button>
+            <button type="button" class="nav-chip" data-target="openings-section">Openings <span id="nav-openings-count"></span></button>
+          </nav>
+        </div>
+
+        <div class="results-scroll" id="results-scroll">
+          <div class="results-empty" id="results-empty">
+            <strong>No analysis yet</strong>
+            <span>Load a plan and run the analysis. Rooms and openings appear here; hover or click one to locate it on the plan.</span>
+          </div>
+
+          <div class="results" id="results" hidden>
+            <section class="panel-section metrics-card" id="metrics-card" hidden aria-label="Results summary">
+              <dl class="metrics" id="metrics"></dl>
+            </section>
+
+            <section class="panel-section warnings-card" id="warnings-card" hidden>
+              <div class="section-head"><h3>Engine warnings</h3><span class="count" id="warnings-count"></span></div>
+              <ul class="warning-list" id="warning-list"></ul>
+            </section>
+
+            <section class="panel-section table-card" id="rooms-section" aria-labelledby="rooms-title">
+              <div class="section-head">
+                <h3 id="rooms-title">Rooms</h3>
+                <span class="count" id="rooms-count"></span>
+                <span class="card-hint">Hover or click to locate on the plan</span>
+              </div>
+              <table class="data-table" id="rooms-table">
+                <thead><tr><th>ID</th><th>Room</th><th class="num">Area</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <div class="subsection" id="spaces-section" hidden>
+                <div class="section-head section-head-sub"><h3>Unlabeled spaces</h3><span class="count" id="spaces-count"></span></div>
+                <table class="data-table" id="spaces-table">
+                  <thead><tr><th>ID</th><th>Boundary</th><th class="num">Area</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="panel-section table-card" id="openings-section" aria-labelledby="openings-title">
+              <div class="section-head">
+                <h3 id="openings-title">Openings</h3>
+                <span class="count" id="openings-count"></span>
+              </div>
+              <table class="data-table" id="openings-table">
+                <thead><tr><th>ID</th><th>Type · evidence</th><th class="num">Width</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <p class="empty-note" id="openings-empty" hidden>The engine reported no openings for this plan.</p>
+            </section>
+
+            <section class="panel-section raw-card">
+              <details>
+                <summary>
+                  <span>Raw API response</span>
+                  <span class="raw-links">
+                    <a id="download-json" class="link" download="floorplan-analysis.json">Download JSON</a>
+                    <a id="download-rooms-overlay" class="link" download="floorplan-rooms-overlay.png">Rooms overlay PNG</a>
+                    <a id="download-openings-overlay" class="link" download="floorplan-openings-overlay.png">Openings overlay PNG</a>
+                  </span>
+                </summary>
+                <pre id="raw-json"></pre>
+              </details>
+            </section>
+          </div>
+        </div>
+      </aside>
+    </div>
   </main>
-  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

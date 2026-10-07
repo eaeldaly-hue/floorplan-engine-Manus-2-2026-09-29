@@ -22,10 +22,21 @@ def client(tmp_path):
 def test_home_page_and_health(client):
     page = client.get("/")
     assert page.status_code == 200
-    assert "من المخطط إلى تفاصيل كل غرفة" in page.get_data(as_text=True)
-    assert "sample-button" in page.get_data(as_text=True)
-    assert "download-json" in page.get_data(as_text=True)
+    html = page.get_data(as_text=True)
+    assert "Analysis Workbench" in html
+    assert "sample-button" in html
+    assert "download-json" in html
+    assert "js/main.js" in html
+    assert client.get("/static/js/main.js").status_code == 200
+    assert client.get("/static/css/app.css").status_code == 200
     assert client.get("/health").json["status"] == "ok"
+
+
+def test_sample_image_is_served_for_the_ui(client):
+    response = client.get("/api/sample.png")
+    assert response.status_code == 200
+    assert response.mimetype == "image/png"
+    assert response.data == (PROJECT_ROOT / "test_floorplan.png").read_bytes()
 
 
 def test_missing_and_unsupported_uploads_are_rejected(client):

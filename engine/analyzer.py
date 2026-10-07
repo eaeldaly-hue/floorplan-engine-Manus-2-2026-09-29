@@ -6,26 +6,29 @@ import math
 import os
 import re
 import statistics
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import cv2
 import numpy as np
 
 from .preprocessing.text_mask import TextMasker
-from .rooms.space_segmentation import SpaceSegmenter
-from .walls.mask import WallMaskBuilder
-from .walls.segments import WallSegmentExtractor
-from .walls.room_mask import RoomMaskBuilder
-from .rooms.detect import RoomDetector
-from .opening_detection import detect_openings, draw_openings_overlay
-from .opening_symbol_model import model_status as opening_symbol_model_status
+from .structure import EXTERIOR, analyze_structure
+from .plan import adapter as plan_adapter
+from .opening_detection import classify_openings, draw_openings_overlay
+from .room_recovery import functional_zones, partition_space
+from .analysis.room_labels import build_room_labels
+from .analysis import room_lexicon
 from .ocr_runtime import configure_tesseract
 from .analysis.ocr import (
     OCRLine,
     configured_ocr_languages,
     extract_ocr,
+    merge_document_text,
     ocr_lines,
+    ocr_workers,
     pytesseract,
+    run_ocr_tasks,
 )
 from .analysis.ocr_fusion import (
     associate_room_labels,
@@ -114,8 +117,8 @@ def _parse_dimensions(text: str) -> dict[str, Any] | None:
                 choices.append((feet, inches))
         if not choices:
             return match.group(0)
-        # Prefer a conventional room-sized value over a very large dimension.
-        feet, inches = min(choices, key=lambda pair: (pair[0] > 30, pair[0]))
+        # Prefer a conventional room-sized value (3-30 ft): 108" is 10'8", not 1'8".
+        feet, inches = min(choices, key=lambda pair: (not 3 <= pair[0] <= 30, pair[0] > 30, pair[0]))
         return f"{feet}'{inches}\""
 
     normalized = re.sub(r"(?<!\d)(\d{3,4})\s*[\"″”]", expand_compact_inches, normalized)
@@ -209,6 +212,9 @@ def _dimension_candidates(lines: list[OCRLine]) -> list[dict[str, Any]]:
 
 
 def _room_name(text: str) -> str | None:
+    name = room_lexicon.room_name(text)
+    if name:
+        return name
     normalized = re.sub(r"ـ|[\u064b-\u065f\u0670]", "", text.upper())
     normalized = normalized.replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").replace("ٱ", "ا").replace("ى", "ي")
     normalized = re.sub(r"[^A-Z0-9\s\u0600-\u06ff]", " ", normalized)
@@ -257,6 +263,19 @@ def _component_map(rooms: list[dict[str, Any]], spaces: list[dict[str, Any]]) ->
     for room in rooms:
         point = room["label_center"]
         containing = [space for space in spaces if _point_in_polygon(point, space["polygon"])]
+        if not containing and room.get("label_box"):
+            # The centre can fall on a wall line or a symbol; let points inside the label vote.
+            b = room["label_box"]
+            votes: dict[str, int] = {}
+            for fx in (0.25, 0.5, 0.75):
+                for fy in (0.3, 0.7):
+                    q = (int(b["x"] + fx * b["width"]), int(b["y"] + fy * b["height"]))
+                    for space in spaces:
+                        if _point_in_polygon(q, space["polygon"]):
+                            votes[space["id"]] = votes.get(space["id"], 0) + 1
+            if votes:
+                best = max(votes.values())
+                containing = [space for space in spaces if votes.get(space["id"]) == best]
         if containing:
             chosen = min(containing, key=lambda space: space["area_pixels"])
             room["space_id"] = chosen["id"]
@@ -277,7 +296,7 @@ def _scale_from_rooms(
             continue
         room = rooms[0]
         dimensions = room.get("dimensions")
-        if not dimensions:
+        if not _plausible_dimensions(dimensions):
             continue
         space = by_id[space_id]
         bbox = space["bbox"]
@@ -465,6 +484,252 @@ def _polygon_bbox(polygon: list[tuple[int, int]]) -> dict[str, int]:
     return {"x": int(x), "y": int(y), "width": int(width), "height": int(height)}
 
 
+OUTDOOR_NAMES = {"Porch", "Terrace", "Balcony", "Deck", "Patio"}
+
+# Functions that commonly share one physical space (open plan). Any other room type sharing a
+# structural space with another label means the structure merged two rooms (a missed wall or
+# door), not an open plan.
+OPEN_PLAN_NAMES = {"Kitchen", "Dining", "Dining room", "Living", "Living room", "Family", "Family room",
+                   "Great room", "Breakfast nook", "Nook", "Foyer", "Entry", "Hall", "Hallway", "Sitting area",
+                   "Den", "Study", "Library", "Playroom", "Sunroom", "Stairs", "Room"}
+
+
+def _shared_space_kind(rooms: list[dict[str, Any]]) -> str:
+    """'open-plan' when every label in a shared structural space is an open-plan function,
+    else 'merged' (physically separate rooms the structure did not separate)."""
+    return "open-plan" if all(r["name"] in OPEN_PLAN_NAMES for r in rooms) else "merged"
+
+
+def _plausible_dimensions(dimensions: dict[str, Any] | None) -> bool:
+    """A printed room dimension with a side under 2.5 ft / 0.75 m is a misread (no room is that
+    narrow); it is kept as text but not used for geometry or scale."""
+    if not dimensions:
+        return False
+    least = 2.5 if dimensions.get("unit") == "ft" else 0.75
+    return min(float(dimensions["width"]), float(dimensions["height"])) >= least
+
+
+def _labels_inside_building(room_lines: list[OCRLine], structure) -> tuple[list[OCRLine], list[str]]:
+    """Room labels name places inside the building. Text that lies in the exterior and beyond
+    the walls' extent (titles, legends, area tables) is not a room label; outdoor room terms
+    (porch, terrace, balcony) may sit just outside the walls."""
+    labels = structure.space_labels
+    ys, xs = np.nonzero(structure.wall_mask)
+    if xs.size == 0:
+        return room_lines, []
+    x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
+    kept, rejected = [], []
+    h, w = labels.shape
+    for line in room_lines:
+        cx, cy = line.center
+        inside_extent = x0 <= cx <= x1 and y0 <= cy <= y1
+        win = labels[max(0, line.y):min(h, line.y + line.height), max(0, line.x):min(w, line.x + line.width)]
+        exterior = win.size > 0 and float((win == EXTERIOR).mean()) > 0.5
+        outdoor = (_room_name(line.text) or "") in OUTDOOR_NAMES
+        if exterior and (not inside_extent or not outdoor):
+            rejected.append(line.text)
+        else:
+            kept.append(line)
+    return kept, rejected
+
+
+def _split_shared_spaces(structure, room_lines: list[OCRLine], ocr_result) -> list[dict[str, Any]]:
+    """Spaces holding several credible room labels are split at drawn constrictions
+    (engine.room_recovery); spaces whose labels are open to each other stay whole."""
+    spaces = list(structure.spaces)
+    labels = [line for line in room_lines if _room_name(line.text) and line.confidence >= 30]
+    if len(labels) < 2 or not spaces:
+        return spaces
+    by_space: dict[int, list[OCRLine]] = {}
+    for line in labels:
+        cx, cy = line.center
+        k = int(structure.space_labels[min(max(cy, 0), structure.space_labels.shape[0] - 1),
+                                       min(max(cx, 0), structure.space_labels.shape[1] - 1)])
+        if k > 0:
+            by_space.setdefault(k, []).append(line)
+    if not any(len(v) >= 2 for v in by_space.values()):
+        return spaces
+    strokes = cv2.bitwise_or(structure.symbol_ink, structure.wall_mask)
+    if ocr_result is not None:
+        for box in ocr_result.boxes:                       # text is not a boundary
+            pad = max(2, int(0.15 * box.height))
+            strokes[max(0, box.y - pad):box.y + box.height + pad, max(0, box.x - pad):box.x + box.width + pad] = 0
+    t = max(structure.wall_thickness, 3.0)
+    out = []
+    for k, space in enumerate(spaces, 1):
+        lines = by_space.get(k, [])
+        parts = None
+        # Labels are evidence of which rooms a merged space holds, not of walls: a space whose
+        # labels are all open-plan functions is one physical space with functional zones, so it
+        # is not split at narrowings (only spaces holding an enclosed room type are).
+        if len(lines) >= 2 and not all(_room_name(line.text) in OPEN_PLAN_NAMES for line in lines):
+            parts = partition_space(structure.space_labels == k, strokes, [line.center for line in lines],
+                                    min_area=max(400.0, (4.0 * t) ** 2))
+        if not parts:
+            out.append(space)
+            continue
+        for j, (mask, _members) in enumerate(parts, 1):
+            contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            contour = max(contours, key=cv2.contourArea)
+            poly = cv2.approxPolyDP(contour, max(1.5, 0.002 * cv2.arcLength(contour, True)), True)
+            x, y, w, h = cv2.boundingRect(contour)
+            m = cv2.moments(mask.astype(np.uint8), binaryImage=True)
+            out.append({
+                "id": f"{space['id']}_{j}",
+                "bbox": {"x": int(x), "y": int(y), "width": int(w), "height": int(h)},
+                "area_pixels": int(mask.sum()),
+                "center": (int(m["m10"] / max(m["m00"], 1)), int(m["m01"] / max(m["m00"], 1))),
+                "polygon": [(int(p[0][0]), int(p[0][1])) for p in poly],
+                "boundary_method": "passage-partition",
+            })
+    return out
+
+
+ZONE_METHODS = {"open-plan-shared": "open-plan-zone", "merged-space": "merged-space-zone"}
+
+# An interior opening wider than this many single doors, with no swing arc and no double door,
+# is not a door; when every room on both sides is an open-plan function it is an open connection.
+OPEN_CONNECTION_DOORS = 2.0
+
+
+def _plan_door_width(openings: list[dict[str, Any]]) -> float | None:
+    """Typical door width of this plan: median of doors drawn with a clear swing arc."""
+    widths = [o["width_pixels"] for o in openings if o["type"] == "door" and o["evidence"].get("arc_score", 0) >= 0.6]
+    return float(statistics.median(widths)) if len(widths) >= 3 else None
+
+
+def _join_open_connections(spaces, room_lines, openings, structure) -> list[dict[str, Any]]:
+    """Interpretation layer over the physical cells. The structure seals every wall gap, so a
+    kitchen open to a living room through a wide opening (a counter, a short wall stub) becomes
+    two cells. Locally such an opening looks like a wide doorway; what tells them apart is what
+    lies on both sides. Two cells are joined into one physical space across an opening when the
+    opening is wider than OPEN_CONNECTION_DOORS of this plan's doors, carries no door symbol
+    (no swing arc, no double door, no glazing), and every room label in both cells is an
+    open-plan function (kitchen, dining, living, foyer ...). No wall is added or removed; cells
+    holding a bedroom, bath, closet, garage etc. are never joined this way."""
+    door = _plan_door_width(openings)
+    if door is None or len(spaces) < 2:
+        return spaces
+    by_id = {sp["id"]: sp for sp in spaces}
+    names: dict[str, list[str]] = {}
+    for line in room_lines:
+        name = _room_name(line.text)
+        if not name or line.confidence < 30:
+            continue
+        containing = [sp for sp in spaces if _point_in_polygon(line.center, sp["polygon"])]
+        if containing:
+            names.setdefault(min(containing, key=lambda sp: sp["area_pixels"])["id"], []).append(name)
+
+    def open_cell(space_id):
+        n = names.get(space_id)
+        return bool(n) and all(x in OPEN_PLAN_NAMES for x in n)
+
+    parent: dict[str, str] = {}
+
+    def find(a):
+        parent.setdefault(a, a)
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    bridges: dict[tuple, list[dict[str, Any]]] = {}
+    for o in openings:
+        ev = o["evidence"]
+        if ev.get("room_relation") != "between_rooms" or o["width_pixels"] < OPEN_CONNECTION_DOORS * door:
+            continue
+        if ev.get("arc_score", 0) >= 0.4 or ev.get("double_arc_score", 0) >= 0.6 or ev.get("glazing_lines", 0) or ev.get("sliding_panels"):
+            continue
+        ids = [x for x in ev.get("adjacent_space_ids", []) if x in by_id]
+        if len(ids) == 2 and ids[0] != ids[1] and open_cell(ids[0]) and open_cell(ids[1]):
+            parent[find(ids[0])] = find(ids[1])
+            bridges.setdefault(tuple(sorted(ids)), []).append(o)
+    groups: dict[str, list[str]] = {}
+    for space_id in list(parent):
+        groups.setdefault(find(space_id), []).append(space_id)
+    groups = {k: v for k, v in groups.items() if len(v) > 1}
+    if not groups:
+        return spaces
+    shape = structure.space_labels.shape
+    out = [sp for sp in spaces if sp["id"] not in parent or len(groups.get(find(sp["id"]), [])) < 2]
+    for members in groups.values():
+        mask = np.zeros(shape, np.uint8)
+        for space_id in members:
+            cv2.fillPoly(mask, [np.asarray(by_id[space_id]["polygon"], np.int32)], 1)
+        for pair, ops in bridges.items():
+            if pair[0] in members and pair[1] in members:
+                for o in ops:                                   # the opening itself belongs to the space
+                    a, b = np.asarray(o["start"], float), np.asarray(o["end"], float)
+                    d = (b - a) / max(1e-9, float(np.linalg.norm(b - a)))
+                    n = np.array([-d[1], d[0]]) * (float(o["evidence"].get("wall_thickness_px", 4)) / 2 + 3)
+                    cv2.fillPoly(mask, [np.round(np.array([a - n, b - n, b + n, a + n])).astype(np.int32)], 1)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contour = max(contours, key=cv2.contourArea)
+        poly = cv2.approxPolyDP(contour, max(1.5, 0.002 * cv2.arcLength(contour, True)), True)
+        x, y, w, h = cv2.boundingRect(contour)
+        m = cv2.moments(mask, binaryImage=True)
+        members = sorted(members)
+        out.append({
+            "id": "+".join(members),
+            "bbox": {"x": int(x), "y": int(y), "width": int(w), "height": int(h)},
+            "area_pixels": int(sum(by_id[k]["area_pixels"] for k in members)),
+            "center": (int(m["m10"] / max(m["m00"], 1)), int(m["m01"] / max(m["m00"], 1))),
+            "polygon": [(int(q[0][0]), int(q[0][1])) for q in poly],
+            "boundary_method": "wall-region",
+            "joined_cells": members,
+        })
+    return out
+
+
+def _assign_functional_zones(room_records, space_lookup, shape, scale) -> None:
+    """Rooms sharing one physical space: the space stays one physical space (record
+    'physical_space'); each room's own extent is its functional zone, the part of the space
+    geodesically nearest its label (engine.room_recovery.functional_zones). Zone borders are
+    estimates, not walls."""
+    by_space: dict[str, list[dict[str, Any]]] = {}
+    for record in room_records:
+        b = record.get("boundary")
+        if b and b["method"] in ZONE_METHODS and record.get("space_id") in space_lookup:
+            by_space.setdefault(record["space_id"], []).append(record)
+    for space_id, records in by_space.items():
+        if len(records) < 2:
+            continue
+        space = space_lookup[space_id]
+        region = np.zeros(shape, np.uint8)
+        cv2.fillPoly(region, [np.asarray(space["polygon"], np.int32)], 1)
+        zones = functional_zones(region > 0, [(r["label_center"]["x"], r["label_center"]["y"]) for r in records])
+        if zones is None:
+            continue
+        for record, zone in zip(records, zones):
+            contours, _ = cv2.findContours(zone.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            if not contours:
+                continue
+            contour = max(contours, key=cv2.contourArea)
+            poly = cv2.approxPolyDP(contour, max(1.5, 0.002 * cv2.arcLength(contour, True)), True)
+            polygon = [(int(q[0][0]), int(q[0][1])) for q in poly]
+            shared_method = record["boundary"]["method"]
+            record["physical_space"] = {
+                "id": space_id,
+                "kind": "open-plan" if shared_method == "open-plan-shared" else "merged",
+                "polygon": [{"x": x, "y": y} for x, y in space["polygon"]],
+                "bbox": space["bbox"],
+                "area_pixels": space["area_pixels"],
+            }
+            record["boundary"] = {
+                "polygon": [{"x": x, "y": y} for x, y in polygon],
+                "bbox": _polygon_bbox(polygon),
+                "method": ZONE_METHODS[shared_method],
+                "confidence": 0.5 if shared_method == "open-plan-shared" else 0.35,
+                "wall_edges_snapped": 0,
+            }
+            if record["area"].get("source") != "printed-dimensions":
+                pixels = float(zone.sum())
+                record["area"] = ({"value": round(pixels / (scale["pixels_per_unit"] ** 2), 2),
+                                   "unit": "ft²" if scale["unit"] == "ft" else "m²", "source": "zone-estimate"}
+                                  if scale else {"value": int(pixels), "unit": "px²", "source": "zone-estimate"})
+
+
 def _build_room_records(
     room_lines: list[OCRLine],
     dimensions: list[OCRLine],
@@ -494,14 +759,19 @@ def _build_room_records(
     dim_candidates = _dimension_candidates(dimensions)
     for room in label_records:
         _associate_dimensions(room, dim_candidates)
+    # Rooms without a confident printed dimension get a local re-read near their label. The
+    # re-reads depend only on their own label, so they run concurrently; the results are
+    # applied in room order.
+    retry = [room for room in label_records
+             if not room.get("dimensions") or room["dimensions"].get("ocr_confidence", 0) < 65]
+    found = run_ocr_tasks(lambda room: _retry_dimensions_near_label(image, room, wall_mask), retry)
+    for room, local_dimensions in zip(retry, found):
         current_dimensions = room.get("dimensions")
-        if not current_dimensions or current_dimensions.get("ocr_confidence", 0) < 65:
-            local_dimensions = _retry_dimensions_near_label(image, room, wall_mask)
-            if local_dimensions and (
-                not current_dimensions
-                or local_dimensions["ocr_confidence"] > current_dimensions.get("ocr_confidence", 0)
-            ):
-                room["dimensions"] = local_dimensions
+        if local_dimensions and (
+            not current_dimensions
+            or local_dimensions["ocr_confidence"] > current_dimensions.get("ocr_confidence", 0)
+        ):
+            room["dimensions"] = local_dimensions
 
     rooms_by_space = _component_map(label_records, spaces)
     scale = _scale_from_rooms(rooms_by_space, spaces)
@@ -511,8 +781,11 @@ def _build_room_records(
 
     for index, room in enumerate(label_records, 1):
         dimensions_record = room.get("dimensions")
+        usable_dimensions = dimensions_record if _plausible_dimensions(dimensions_record) else None
         space_id = room.get("space_id")
         same_space_rooms = rooms_by_space.get(space_id, []) if space_id else []
+        shared_kind = _shared_space_kind(same_space_rooms) if len(same_space_rooms) > 1 else None
+        zone_extent = None
         candidate_space = space_lookup.get(space_id) if space_id else None
         polygon = None
         method = "unresolved"
@@ -521,13 +794,24 @@ def _build_room_records(
 
         if candidate_space and len(same_space_rooms) == 1:
             polygon = list(candidate_space["polygon"])
-            method = "wall-region"
+            method = candidate_space.get("boundary_method", "wall-region")
             boundary_confidence = 0.76
             used_spaces.add(space_id)
 
-        if dimensions_record and scale and dimensions_record["unit"] == scale["unit"]:
-            expected_width = dimensions_record["width"] * scale["pixels_per_unit"]
-            expected_height = dimensions_record["height"] * scale["pixels_per_unit"]
+        if shared_kind == "open-plan" and candidate_space:
+            # Functional zone of an open-plan space: the physical space is the shared one. A
+            # printed size only gives the zone's approximate extent (metadata), never a boundary.
+            polygon = list(candidate_space["polygon"])
+            method = "open-plan-shared"
+            boundary_confidence = 0.6
+            used_spaces.add(space_id)
+            if usable_dimensions and scale and usable_dimensions["unit"] == scale["unit"]:
+                extent, _ = _snap_rectangle(room["label_center"], usable_dimensions["width"] * scale["pixels_per_unit"],
+                                            usable_dimensions["height"] * scale["pixels_per_unit"], wall_mask, scale["pixels_per_unit"])
+                zone_extent = {"polygon": [{"x": x, "y": y} for x, y in extent], "method": "dimension-estimate"}
+        elif usable_dimensions and scale and usable_dimensions["unit"] == scale["unit"]:
+            expected_width = usable_dimensions["width"] * scale["pixels_per_unit"]
+            expected_height = usable_dimensions["height"] * scale["pixels_per_unit"]
             expected_area = max(1.0, expected_width * expected_height)
             region_area = float(candidate_space["area_pixels"]) if candidate_space else 0.0
             region_ratio = region_area / expected_area if region_area else 0.0
@@ -553,6 +837,15 @@ def _build_room_records(
                 method = "dimension-box-wall-snapped" if snapped_edges else "dimension-box-estimate"
                 boundary_confidence = min(0.88, 0.46 + 0.09 * snapped_edges)
 
+        if not polygon and candidate_space and len(same_space_rooms) > 1:
+            # Several named rooms in one structural space: each label refers to the shared space;
+            # no boundary is invented. Rooms that are not open-plan functions (bedroom, bath,
+            # closet, garage ...) sharing a space are a structural merge, reported as such.
+            polygon = list(candidate_space["polygon"])
+            method = "open-plan-shared" if shared_kind == "open-plan" else "merged-space"
+            boundary_confidence = 0.6 if shared_kind == "open-plan" else 0.4
+            used_spaces.add(space_id)
+
         if not polygon and scale:
             polygon = _room_box_from_wall_rays(
                 room["label_center"],
@@ -565,10 +858,10 @@ def _build_room_records(
 
         bbox = _polygon_bbox(polygon) if polygon else None
         polygon_area = round(abs(cv2.contourArea(np.asarray(polygon, dtype=np.int32)))) if polygon else None
-        if dimensions_record:
+        if usable_dimensions:
             area = {
-                "value": dimensions_record["area"],
-                "unit": "ft²" if dimensions_record["unit"] == "ft" else "m²",
+                "value": usable_dimensions["area"],
+                "unit": "ft²" if usable_dimensions["unit"] == "ft" else "m²",
                 "source": "printed-dimensions",
             }
         elif polygon_area is not None and scale:
@@ -590,6 +883,7 @@ def _build_room_records(
                 "name": room["name"],
                 "label_text": room["label_text"],
                 "label_confidence": room["label_confidence"],
+                **({"label_source": "pdf-text"} if getattr(room.get("_ocr"), "source", "") == "pdf-text" else {}),
                 "label_center": {"x": room["label_center"][0], "y": room["label_center"][1]},
                 "dimensions": dimensions_record,
                 "area": area,
@@ -601,8 +895,45 @@ def _build_room_records(
                     "wall_edges_snapped": snapped_edges,
                 } if polygon else None,
                 "space_id": space_id,
+                "zone_extent": zone_extent,
             }
         )
+
+    # Consistency: an estimated boundary (dimension box / wall rays) must not contain another
+    # named room's label. Such a box is wrong (scale or dimension misread); the room falls back
+    # to its own structural space instead.
+    centers = [(r["id"], r["label_center"]["x"], r["label_center"]["y"]) for r in room_records]
+    for record in room_records:
+        b = record["boundary"]
+        if not b or b["method"] in ("wall-region", "open-plan-shared", "merged-space", "passage-partition"):
+            continue
+        poly = [(q["x"], q["y"]) for q in b["polygon"]]
+        if not any(i != record["id"] and _point_in_polygon((x, y), poly) for i, x, y in centers):
+            continue
+        space = space_lookup.get(record["space_id"]) if record["space_id"] else None
+        if space is None:
+            record["boundary"] = None
+            continue
+        sharers = rooms_by_space.get(record["space_id"], [])
+        sharing = len(sharers) > 1
+        record["boundary"] = {
+            "polygon": [{"x": x, "y": y} for x, y in space["polygon"]],
+            "bbox": space["bbox"],
+            "method": (("open-plan-shared" if _shared_space_kind(sharers) == "open-plan" else "merged-space") if sharing
+                       else space.get("boundary_method", "wall-region")),
+            "confidence": 0.6 if sharing else 0.76,
+            "wall_edges_snapped": 0,
+        }
+
+    shared: dict[str, list[str]] = {}
+    for record in room_records:
+        if record["boundary"] and record["boundary"]["method"] in ("open-plan-shared", "merged-space"):
+            shared.setdefault(record["space_id"], []).append(record["id"])
+    for record in room_records:
+        ids = shared.get(record["space_id"]) if record["boundary"] and record["boundary"]["method"] in ("open-plan-shared", "merged-space") else None
+        record["shares_space_with"] = [i for i in ids if i != record["id"]] if ids else []
+
+    _assign_functional_zones(room_records, space_lookup, wall_mask.shape, scale)
 
     unlabeled = []
     for space in spaces:
@@ -627,7 +958,7 @@ def _build_room_records(
                 "boundary": {
                     "polygon": [{"x": x, "y": y} for x, y in space["polygon"]],
                     "bbox": space["bbox"],
-                    "method": "wall-region",
+                    "method": space.get("boundary_method", "wall-region"),
                     "confidence": 0.62,
                     "wall_edges_snapped": 0,
                 },
@@ -635,71 +966,6 @@ def _build_room_records(
         )
 
     return room_records, scale, unlabeled
-
-
-def _supplement_anonymous_spaces(
-    image: np.ndarray, spaces: list[dict[str, Any]], unlabeled: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Add enclosed regions found by the independent segment/flood-fill path.
-
-    The primary segmenter is good at recovering irregular regions, while the
-    wall-segment pipeline can close some door gaps the first pass misses. Run
-    this only for unlabeled plans, then discard candidates that substantially
-    overlap an existing region so the two detectors do not double-count rooms.
-    """
-    wall_mask = WallMaskBuilder(image).build()
-    segments = WallSegmentExtractor(wall_mask).detect()
-    room_mask = RoomMaskBuilder(segments, wall_mask.shape, source_image=image).build()
-    detected = RoomDetector(room_mask).detect()
-    height, width = image.shape[:2]
-
-    existing_masks = []
-    for space in spaces:
-        mask = np.zeros((height, width), dtype=np.uint8)
-        cv2.fillPoly(mask, [np.asarray(space["polygon"], dtype=np.int32)], 255)
-        existing_masks.append(mask > 0)
-
-    added = 0
-    for candidate in detected:
-        candidate_mask = np.zeros((height, width), dtype=np.uint8)
-        cv2.fillPoly(candidate_mask, [np.asarray(candidate["polygon"], dtype=np.int32)], 255)
-        candidate_pixels = candidate_mask > 0
-        candidate_area = int(candidate_pixels.sum())
-        if candidate_area == 0:
-            continue
-
-        duplicate = False
-        for existing in existing_masks:
-            intersection = int(np.logical_and(candidate_pixels, existing).sum())
-            smaller_area = min(candidate_area, int(existing.sum()))
-            # Contours from the two pipelines can differ along wall edges, so
-            # compare overlap against the smaller region as well as IoU.
-            union = candidate_area + int(existing.sum()) - intersection
-            if intersection / max(1, smaller_area) >= 0.60 or intersection / max(1, union) >= 0.35:
-                duplicate = True
-                break
-        if duplicate:
-            continue
-
-        added += 1
-        polygon = candidate["polygon"]
-        x, y, box_width, box_height = cv2.boundingRect(np.asarray(polygon, dtype=np.int32))
-        unlabeled.append({
-            "id": f"geometry-space-{added:02d}",
-            "name": "Unlabeled space",
-            "area": {"value": candidate_area, "unit": "px²", "source": "polygon-pixels"},
-            "area_pixels": candidate_area,
-            "boundary": {
-                "polygon": [{"x": int(px), "y": int(py)} for px, py in polygon],
-                "bbox": {"x": int(x), "y": int(y), "width": int(box_width), "height": int(box_height)},
-                "method": "independent-wall-region",
-                "confidence": 0.55,
-                "wall_edges_snapped": 0,
-            },
-        })
-        existing_masks.append(candidate_pixels)
-
-    return unlabeled
 
 
 def _infer_anonymous_dimensions(
@@ -967,10 +1233,72 @@ def _draw_overlay(image: np.ndarray, rooms: list[dict[str, Any]], unlabeled: lis
     return encoded.tobytes()
 
 
+def _topology(structure, openings: list[dict[str, Any]], rooms: list[dict[str, Any]]) -> dict[str, Any]:
+    """Room ↔ room / room ↔ exterior relationships through openings, and shared walls."""
+    names: dict[str, list[str]] = {}
+    for room in rooms:
+        if room.get("space_id"):
+            names.setdefault(room["space_id"], []).append(room["id"])
+
+    def side(space_id):
+        return space_id if space_id else "exterior"
+
+    connections = []
+    for opening in openings:
+        evidence = opening["evidence"]
+        ids = evidence.get("adjacent_space_ids") or []
+        relation = evidence.get("room_relation")
+        if relation == "between_rooms" and len(ids) == 2:
+            between = ids
+        elif relation == "room_to_exterior" and ids:
+            between = [ids[0], "exterior"]
+        else:
+            continue
+        connections.append({"opening_id": opening["id"], "type": opening["type"], "between": between})
+    return {
+        "spaces": [
+            {"id": space["id"], "area_pixels": space["area_pixels"], "room_ids": names.get(space["id"], [])}
+            for space in structure.spaces
+        ],
+        "connections": connections,
+        "wall_adjacency": [
+            [structure.space_id(a), structure.space_id(b)] for a, b in sorted(structure.wall_adjacency)
+        ],
+        "wall_thickness_px": round(structure.wall_thickness, 1),
+    }
+
+
+def _line_source(group) -> str:
+    """'pdf-text' when every word of the label comes from the document's own text."""
+    boxes = getattr(group, "boxes", ())
+    return "pdf-text" if boxes and all(box.source == "pdf-text" for box in boxes) else "robust-ocr"
+
+
 class FloorPlanAnalyzer:
     """Analyze an OpenCV BGR image and return room records plus a PNG overlay."""
 
-    def analyze(self, image: np.ndarray, source_name: str = "floor-plan") -> dict[str, Any]:
+    def analyze(self, image: np.ndarray, source_name: str = "floor-plan", text_evidence=None,
+                structure_image: np.ndarray | None = None, structure_engine: str = "legacy",
+                abbreviations: bool | None = None) -> dict[str, Any]:
+        """See `_analyze`. `abbreviations` (experimental): drafting abbreviations (BDRM, BA-1, KIT,
+        W/D...) count as room names; default: only with a structural image."""
+        use = structure_image is not None if abbreviations is None else abbreviations
+        with room_lexicon.abbreviations(use):
+            return self._analyze(image, source_name, text_evidence, structure_image, structure_engine)
+
+    def _analyze(self, image: np.ndarray, source_name: str = "floor-plan", text_evidence=None,
+                 structure_image: np.ndarray | None = None, structure_engine: str = "legacy") -> dict[str, Any]:
+        """`text_evidence`: optional OCR-style boxes of the document's own text in this image's
+        pixel frame (a PDF text layer, ingest.pdf_text). It is merged with OCR of the page; when
+        it is None (images, scans) the analysis is exactly the OCR-only analysis.
+
+        `structure_image` (experimental): a structural rendering of the same page in the same
+        frame (engine.semantic: walls, columns, doors, windows only). Walls, spaces, openings and
+        the Plan Model then run on it; text, labels, dimensions and overlays keep `image`. None:
+        everything runs on `image` (unchanged behaviour). With a structural image,
+        `structure_engine` "legacy" (default) keeps the legacy structure when it finds spaces
+        (measured best, benchmark.pdf_plans variant E); "plan" reconstructs with the Plan Model,
+        reading opening symbols from `image` (variant C)."""
         if image is None or image.ndim != 3 or image.shape[2] != 3:
             raise ValueError("Expected a decoded three-channel color image")
         height, width = image.shape[:2]
@@ -979,18 +1307,32 @@ class FloorPlanAnalyzer:
         if height * width > 25_000_000:
             raise ValueError("The image is too large (maximum 25 megapixels)")
 
+        if structure_image is None:
+            geometry = image
+        elif structure_image.shape != image.shape:
+            raise ValueError("The structural image must have the same size as the image")
+        else:
+            geometry = structure_image
         warnings = []
         ocr_result = None
         room_lines: list[OCRLine] = []
         dimension_lines: list[OCRLine] = []
 
-        if pytesseract is not None:
+        # The structural pass (walls, gaps, spaces) needs only the image, so it runs while OCR
+        # reads the text; its result, or its exception, is taken where it was computed before.
+        background = ThreadPoolExecutor(max_workers=1, thread_name_prefix="floorplan-structure") \
+            if ocr_workers() > 1 else None
+        structure_job = background.submit(analyze_structure, geometry) if background else None
+
+        if pytesseract is not None or text_evidence:
             try:
-                ocr_result = extract_ocr(image)
+                ocr_result = extract_ocr(image) if pytesseract is not None else None
+                if text_evidence:
+                    ocr_result = merge_document_text(text_evidence, ocr_result)
 
                 # Convert grouped OCR evidence back to the legacy OCRLine
                 # interface used by the existing room/dimension pipeline.
-                room_groups = group_room_labels(ocr_result.room_labels)
+                room_groups = build_room_labels(ocr_result.boxes)
                 dimension_groups = group_dimensions(ocr_result.dimensions)
 
                 for group in room_groups:
@@ -1005,7 +1347,7 @@ class FloorPlanAnalyzer:
                             width=group.width,
                             height=group.height,
                             confidence=group.confidence,
-                            source="robust-ocr",
+                            source=_line_source(group),
                         )
                     )
 
@@ -1018,7 +1360,7 @@ class FloorPlanAnalyzer:
                             width=group.width,
                             height=group.height,
                             confidence=group.confidence,
-                            source="robust-ocr",
+                            source=_line_source(group),
                         )
                     )
 
@@ -1027,15 +1369,32 @@ class FloorPlanAnalyzer:
         else:
             warnings.append("Tesseract OCR is unavailable; room names and dimensions were not read")
 
-        clean_image = image
-        wall_mask = WallMaskBuilder(clean_image).build()
-        spaces = SpaceSegmenter(
-            clean_image,
-            wall_mask=wall_mask,
-            gap_close_ratio=0.0625,
-            min_area=max(1000, round(height * width * 0.0015)),
-            max_image_area_ratio=0.80,
-        ).detect_spaces()
+        # One structural pass: walls, wall gaps, sealed spaces and their topology.
+        if structure_job is not None:
+            try:
+                structure = structure_job.result()
+            finally:
+                background.shutdown(wait=True)
+        else:
+            structure = analyze_structure(geometry)
+        # Plan Model: only where the legacy structure found nothing (or in shadow mode); in
+        # fallback its spaces replace the empty legacy ones
+        if structure_image is not None and structure_engine == "plan":
+            plan_model, plan_notes, structure = plan_adapter.run(geometry, room_lines, structure,
+                                                                 evidence_image=image, prefer=True)
+        else:
+            plan_model, plan_notes, structure = plan_adapter.run(geometry, room_lines, structure)
+        warnings.extend(plan_notes)
+        wall_mask = structure.wall_mask
+        room_lines, rejected_labels = _labels_inside_building(room_lines, structure)
+        if rejected_labels:
+            warnings.append(
+                "Room-like text outside the building was not used as a room label: "
+                + ", ".join(f"'{text}'" for text in rejected_labels[:4])
+            )
+        spaces = _split_shared_spaces(structure, room_lines, ocr_result)
+        openings = classify_openings(geometry, structure)
+        spaces = _join_open_connections(spaces, room_lines, openings, structure)
 
         rooms, scale, unlabeled = _build_room_records(
             room_lines,
@@ -1044,12 +1403,8 @@ class FloorPlanAnalyzer:
             wall_mask,
             image,
         )
-        supplemental_space_count = 0
         dimension_estimate_count = 0
         if not rooms:
-            initial_unlabeled_count = len(unlabeled)
-            unlabeled = _supplement_anonymous_spaces(image, spaces, unlabeled)
-            supplemental_space_count = len(unlabeled) - initial_unlabeled_count
             unlabeled, anonymous_scale, dimension_estimate_count = _infer_anonymous_dimensions(
                 image, dimension_lines, wall_mask, unlabeled
             )
@@ -1057,10 +1412,6 @@ class FloorPlanAnalyzer:
                 scale = anonymous_scale
         if not rooms:
             warnings.append("No room labels were identified; geometric regions are shown as unlabeled candidates")
-            if supplemental_space_count:
-                warnings.append(
-                    f"An independent wall-segmentation pass added {supplemental_space_count} additional candidate region(s); review them because open or faint boundaries can merge spaces."
-                )
             if dimension_estimate_count:
                 warnings.append(
                     f"Printed dimensions and a scale calibrated from {scale['calibration_rooms']} geometric region(s) produced {dimension_estimate_count} additional estimated room boundary/boundaries. Review these estimates against the walls."
@@ -1073,19 +1424,18 @@ class FloorPlanAnalyzer:
                 f"Pixel scale estimated at {scale['pixels_per_unit']} px/{scale['unit']} from "
                 f"{scale['calibration_rooms']} {calibration_source}; dimension-derived room areas use the printed plan text."
             )
-        if any(room["boundary"] and room["boundary"]["method"] != "wall-region" for room in rooms):
+        if any(room["boundary"] and room["boundary"]["method"] not in ("wall-region", "open-plan-zone", "merged-space-zone") for room in rooms):
             warnings.append("Orange boundaries are dimension-based estimates; green boundaries follow extracted wall regions.")
+        if any(room.get("physical_space", {}).get("kind") == "open-plan" for room in rooms):
+            warnings.append("Open-plan spaces (blue outline) hold several functional zones with no wall between them; "
+                            "the dashed zone extents are estimates, not walls.")
+        if any(room.get("physical_space", {}).get("kind") == "merged" for room in rooms):
+            warnings.append("Some rooms that are normally walled off (e.g. bedroom, bath, closet) share one detected space "
+                            "(red outline): a wall or door between them was probably not detected.")
 
-        openings = detect_openings(image, scale, spaces=spaces)
-        model_status = opening_symbol_model_status()
-        if model_status["reason"] == "torch_missing":
-            warnings.append(
-                "The trained local door/window classifier is present, but PyTorch is missing; install the 'ml' extra to enable it."
-            )
-        elif not model_status["available"]:
-            warnings.append(
-                "The project-owned door/window symbol classifier is not trained yet; geometric wall and room analysis is active."
-            )
+        if scale and scale.get("pixels_per_unit"):
+            for opening in openings:
+                opening["width_display"] = f"{opening['width_pixels'] / scale['pixels_per_unit']:.1f} {scale['unit']}"
         opening_counts = {
             kind: sum(opening["type"] == kind for opening in openings)
             for kind in ("door", "window", "opening")
@@ -1095,7 +1445,7 @@ class FloorPlanAnalyzer:
 
         overlay_png = _draw_overlay(image, rooms, unlabeled)
         openings_overlay_png = draw_openings_overlay(image, openings)
-        return {
+        result = {
             "source_name": source_name,
             "image": {"width": width, "height": height},
             "room_count": len(rooms),
@@ -1108,7 +1458,11 @@ class FloorPlanAnalyzer:
             "door_count": opening_counts["door"],
             "window_count": opening_counts["window"],
             "unclassified_opening_count": opening_counts["opening"],
+            "topology": _topology(structure, openings, rooms),
             "warnings": warnings,
             "overlay_png": overlay_png,
             "openings_overlay_png": openings_overlay_png,
         }
+        if plan_model is not None:
+            result["plan_model"] = plan_model
+        return result

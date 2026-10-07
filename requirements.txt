@@ -5,3 +5,4 @@ pdf2image>=1.17,<2
 pypdf>=5,<7
 pytesseract>=0.3.10,<1
 pytest>=8,<9
+pywebview>=6.2,<7; sys_platform == "darwin"

@@ -1,0 +1,40 @@
+{
+  "image": "test_floorplan.png",
+  "size": [2490, 2420],
+  "notes": "Hand-labelled from the image. Coordinates are opening endpoints on the wall axis (pixels). In this drawing style windows have a glazing line along the wall plus dark jambs; doors are drawn as a thin outline only (no swing). 'opening' = ambiguous gaps that are neither clearly a door nor a window; they are excluded from door/window precision and recall but should be found as candidates.",
+  "openings": [
+    {"id": "W1", "kind": "window", "p0": [445, 86], "p1": [597, 86], "where": "living room, top"},
+    {"id": "W2", "kind": "window", "p0": [882, 86], "p1": [1190, 86], "where": "kitchen, top"},
+    {"id": "W3", "kind": "window", "p0": [1392, 86], "p1": [1538, 86], "where": "kitchen, top"},
+    {"id": "W4", "kind": "window", "p0": [159, 213], "p1": [159, 360], "where": "living room, left"},
+    {"id": "W5", "kind": "window", "p0": [159, 665], "p1": [159, 812], "where": "living room, left"},
+    {"id": "W6", "kind": "window", "p0": [159, 1125], "p1": [159, 1270], "where": "bedroom, left"},
+    {"id": "W7", "kind": "window", "p0": [159, 1760], "p1": [159, 1905], "where": "lower bedroom, left"},
+    {"id": "W8", "kind": "window", "p0": [380, 2103], "p1": [525, 2103], "where": "lower bedroom, bottom"},
+    {"id": "W9", "kind": "window", "p0": [868, 1943], "p1": [1015, 1943], "where": "office, bottom"},
+    {"id": "W10", "kind": "window", "p0": [2393, 283], "p1": [2393, 712], "where": "master bedroom, right"},
+    {"id": "W11", "kind": "window", "p0": [2393, 1135], "p1": [2393, 1282], "where": "bath, right"},
+
+    {"id": "D1", "kind": "door", "p0": [1536, 700], "p1": [1598, 642], "where": "kitchen - pantry (diagonal)"},
+    {"id": "D2", "kind": "door", "p0": [1705, 808], "p1": [1794, 896], "where": "hall - master bedroom (diagonal)"},
+    {"id": "D3", "kind": "door", "p0": [1717, 1000], "p1": [1794, 911], "where": "hall - closet (diagonal)"},
+    {"id": "D4", "kind": "door", "p0": [1966, 850], "p1": [1966, 973], "where": "closet - bath"},
+    {"id": "D5", "kind": "door", "p0": [2076, 816], "p1": [2190, 816], "where": "master bedroom - bath"},
+    {"id": "D6", "kind": "door", "p0": [2221, 830], "p1": [2221, 955], "where": "bath - WC"},
+    {"id": "D7", "kind": "door", "p0": [1448, 1014], "p1": [1571, 1014], "where": "hall - laundry"},
+    {"id": "D8", "kind": "door", "p0": [1437, 1347], "p1": [1575, 1347], "where": "laundry - garage"},
+    {"id": "D9", "kind": "door", "p0": [378, 1454], "p1": [502, 1454], "where": "bedroom - closet"},
+    {"id": "D10", "kind": "door", "p0": [200, 1555], "p1": [323, 1555], "where": "closet - lower bedroom"},
+    {"id": "D11", "kind": "door", "p0": [590, 1440], "p1": [680, 1340], "where": "bedroom - hall (diagonal)"},
+    {"id": "D12", "kind": "door", "p0": [590, 1460], "p1": [690, 1555], "where": "hall - lower bedroom (diagonal)"},
+    {"id": "D13", "kind": "door", "p0": [868, 1316], "p1": [998, 1316], "where": "bath - hall"},
+    {"id": "D14", "kind": "door", "p0": [1119, 1160], "p1": [1119, 1290], "where": "linen closet - hallway"},
+    {"id": "D15", "kind": "door", "p0": [1050, 1475], "p1": [1145, 1570], "where": "office - hallway (diagonal)"},
+    {"id": "D16", "kind": "door", "p0": [1207, 1762], "p1": [1373, 1762], "where": "porch - hallway (entry)"},
+    {"id": "D17", "kind": "door", "p0": [1528, 2310], "p1": [2235, 2310], "where": "garage door"},
+
+    {"id": "O1", "kind": "opening", "p0": [597, 86], "p1": [882, 86], "where": "living room top: gap with a single thin line"},
+    {"id": "O2", "kind": "opening", "p0": [1915, 86], "p1": [2182, 86], "where": "master bedroom top: gap with a single thin line"},
+    {"id": "O3", "kind": "opening", "p0": [1207, 1960], "p1": [1380, 1960], "where": "porch open edge"}
+  ]
+}

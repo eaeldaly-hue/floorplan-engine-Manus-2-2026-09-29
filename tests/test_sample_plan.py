@@ -54,11 +54,8 @@ def test_baseline_fixture_covers_the_full_source_image():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known baseline gap: current detector covers only 7/17 printed room-label anchors; improve room boundaries before removing this xfail.",
-)
 def test_room_boundaries_cover_at_least_15_of_17_printed_room_labels(tmp_path):
+    # Was a strict xfail at 7/17 before the Phase 3 structure engine (now 17/17).
     truth = json.loads(TRUTH.read_text(encoding="utf-8"))
     result = run(str(IMAGE), tmp_path / "label-analysis")
     assert _label_anchor_coverage(result["rooms"], truth["rooms"]) >= 15
