@@ -278,7 +278,7 @@ ground truth and a correctness-first benchmark:
 | Page | | Separated | Merged | Missed | Splits | Balcony merged | Named correct | Outside building | Seconds |
 |---|---|---|---|---|---|---|---|---|---|
 | 22.pdf p5 | A | 8 / 66 | 12 | 46 | 1 | 0 | 0 / 43 | 23 | 35 |
-| | E | **51 / 66** | 12 | 3 | 0 | 0 | **28 / 43** | 3 | 28-36 |
+| | E | **55 / 66** | 8 | 3 | 0 | 0 | **32 / 43** | 3 | 28-36 |
 | 22.pdf p6 | A | 17 / 74 | 49 | 8 | 5 | 3 | 2 / 50 | 31 | 47 |
 | | E | **66 / 74** | 8 | 0 | 0 | 0 | **40 / 50** | 0 | 40-85 |
 | 22.pdf p7 | A | 16 / 74 | 47 | 11 | 5 | 3 | 2 / 50 | 30 | 45 |

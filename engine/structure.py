@@ -429,6 +429,48 @@ def _cross_occupancy(mask, origin, d, n, s_values, v_values) -> np.ndarray:
     return _sample(mask, xs, ys).mean(axis=1)
 
 
+def _parallel_strokes(mask, origin, d, n, s_values, lo, hi) -> bool:
+    """The ink between two bridging lines is more parallel lines (a glazing band: frame, glass,
+    sill, sliding panels), not text or hatching: across the band, every inked 1-px row is one or
+    two long runs along the opening, and at least one runs (nearly) its whole length. Text and
+    hatching ink rows in many short pieces."""
+    s = np.asarray(s_values, float)
+    if max(abs(d[0]), abs(d[1])) < 0.97:
+        return False                                  # glazing runs along the plan's wall axes
+    # Hough pieces of an axis-aligned band come out slightly tilted: judge the rows on the axis
+    mid = np.asarray(origin, float) + d * s.mean()
+    d = np.array([np.sign(d[0]), 0.0]) if abs(d[0]) >= abs(d[1]) else np.array([0.0, np.sign(d[1])])
+    n = np.array([-d[1], d[0]]) * (1.0 if float(np.dot(n, [-d[1], d[0]])) >= 0 else -1.0)
+    origin = mid - d * s.mean()
+    # a glazing band stands alone in its wall; parallel lines that go on beyond it are a pattern
+    # (floor planks, hatching, stair treads)
+    width = max(3.0, hi - lo)
+    outside = np.concatenate([np.arange(lo - 2.0 - 1.5 * width, lo - 2.0), np.arange(hi + 3.0, hi + 3.0 + 1.5 * width)])
+    ox = origin[0] + d[0] * s[:, None] + n[0] * outside[None, :]
+    oy = origin[1] + d[1] * s[:, None] + n[1] * outside[None, :]
+    for col in _sample(mask, ox, oy).T:
+        runs = _runs(col)
+        if runs and max(b - a for a, b in runs) >= 0.5 * len(s):
+            return False
+    v = np.arange(np.floor(lo) - 1.0, np.ceil(hi) + 2.0)
+    xs = origin[0] + d[0] * s[:, None] + n[0] * v[None, :]
+    ys = origin[1] + d[1] * s[:, None] + n[1] * v[None, :]
+    occ = _sample(mask, xs, ys)                     # rows = positions along, cols = 1-px rows across
+    n_s = occ.shape[0]
+    full = 0
+    for col in occ.T:
+        share = float(col.mean())
+        if share <= 0.15:
+            continue
+        runs = _runs(col)
+        # a drawn line (or a sliding panel's line, covering part of the opening) is one or two
+        # long runs; text and hatching are many short ones
+        if len(runs) > 2 or max(b - a for a, b in runs) < 0.3 * n_s:
+            return False
+        full += share >= 0.85
+    return full >= 1
+
+
 def _axis_end_faces(wall_mask: np.ndarray, kernel: int, thick_max: float) -> list[tuple]:
     """Wall end faces of axis-aligned walls: (end point, direction, face length)."""
     m = wall_mask > 0
@@ -795,7 +837,7 @@ def _line_bridged_gaps(wall_mask, thin, typical_t, existing) -> list[tuple]:
             inner_v = np.linspace(lo + 0.2 * (hi - lo), hi - 0.2 * (hi - lo), 5)
             u = np.linspace(0.15 * length, 0.85 * length, max(6, int(length / 2)))
             fill = _cross_occupancy(thin, a, d, n, u, inner_v).mean()
-            if fill > 0.22:
+            if fill > 0.22 and not _parallel_strokes(thin, a, d, n, u, lo, hi):
                 continue  # densely inked between the lines: text or hatching, not an opening outline
             used.update((i, j))
             centre_shift = n * gap / 2
