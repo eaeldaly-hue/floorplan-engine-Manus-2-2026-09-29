@@ -1335,7 +1335,14 @@ class FloorPlanAnalyzer:
             st = analyze_structure(geom)
             prefer = geom is not image and structure_engine == "plan"
             pending = plan_adapter.prepare(geom, st, evidence_image=image if prefer else None, prefer=prefer)
-            return cleaned, geom, st, pending
+            hyps, blocks = None, []
+            if geom is image:
+                # ambiguous plans get alternative readings (engine.reconstruction); easy ones run once
+                from . import reconstruction
+                hyps = reconstruction.generate(geom, st)
+                if len(hyps) > 1:
+                    blocks = reconstruction.text_blocks(image)
+            return cleaned, geom, st, pending, (hyps, blocks)
 
         background = ThreadPoolExecutor(max_workers=1, thread_name_prefix="floorplan-structure") \
             if ocr_workers() > 1 else None
@@ -1389,14 +1396,42 @@ class FloorPlanAnalyzer:
         # One structural pass: walls, wall gaps, sealed spaces and their topology.
         if structure_job is not None:
             try:
-                cleaned, geometry, structure, pending_plan = structure_job.result()
+                cleaned, geometry, structure, pending_plan, (hyps, blocks) = structure_job.result()
             finally:
                 background.shutdown(wait=True)
         else:
-            cleaned, geometry, structure, pending_plan = structural()
+            cleaned, geometry, structure, pending_plan, (hyps, blocks) = structural()
+        work_scale, reconstruction_report = 1.0, None
+        plan_model, plan_notes = None, []
+        if hyps and len(hyps) > 1:
+            from . import reconstruction
+            evidence = [(_room_name(line.text), (line.center[0], line.center[1])) for line in room_lines
+                        if _room_name(line.text)]
+            if pending_plan is not None:
+                # the Plan Model reading competes with the other readings on the same evidence
+                pm, pm_notes, pm_structure = plan_adapter.finish(pending_plan, room_lines, structure)
+                if pm_structure is not structure:
+                    hyps.insert(1, reconstruction.Hypothesis("plan-model", 1.0, image, pm_structure,
+                                                             "reconstructed by the Plan Model (default found no space)"))
+                pending_plan = None
+            best, reconstruction_report = reconstruction.choose(hyps, evidence, blocks)
+            structure = best.structure
+            if best.name == "plan-model":
+                plan_model, plan_notes = pm, pm_notes
+            if best.scale != 1.0:
+                # the whole analysis continues on the normalised reading; mapped back at the end
+                work_scale = best.scale
+                image = geometry = best.image
+                room_lines = reconstruction.scale_lines(room_lines, work_scale)
+                dimension_lines = reconstruction.scale_lines(dimension_lines, work_scale)
+                ocr_result = reconstruction.scale_ocr(ocr_result, work_scale)
+            if best.name != "default":
+                warnings.append(f"Reconstruction: {best.reason} - chosen over the default reading because it "
+                                f"explains the room labels and text blocks better.")
         # Plan Model: only where the legacy structure found nothing (or in shadow mode); in
         # fallback its spaces replace the empty legacy ones
-        plan_model, plan_notes, structure = plan_adapter.finish(pending_plan, room_lines, structure)
+        if pending_plan is not None:
+            plan_model, plan_notes, structure = plan_adapter.finish(pending_plan, room_lines, structure)
         warnings.extend(plan_notes)
         wall_mask = structure.wall_mask
         room_lines, rejected_labels = _labels_inside_building(room_lines, structure)
@@ -1418,6 +1453,13 @@ class FloorPlanAnalyzer:
             openings = typed_openings(cleaned, structure)
         else:
             openings = classify_openings(geometry, structure)
+            legible = next((h for h in (hyps or []) if h.name == "normalised-scale"), None) if work_scale == 1.0 else None
+            if legible is not None and openings:
+                # under-resolved plan: read the opening symbols on the normalised reading
+                from .arch.symbol_scale import renumber, transfer_types
+                transfer_types(openings, classify_openings(legible.image, legible.structure), legible.scale,
+                               structure.wall_thickness)
+                renumber(openings)
         spaces = _join_open_connections(spaces, room_lines, openings, structure)
 
         rooms, scale, unlabeled = _build_room_records(
@@ -1496,4 +1538,9 @@ class FloorPlanAnalyzer:
             result["plan_model"] = plan_model
         if cleaner is not None:
             result["_clean_result"] = cleaned
+        if reconstruction_report is not None:
+            result["reconstruction"] = reconstruction_report
+        if work_scale != 1.0:
+            from .rescale import to_original
+            result = to_original(result, work_scale, width, height)
         return result

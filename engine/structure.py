@@ -22,6 +22,8 @@ One pass per image, shared by room analysis and opening classification.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import math
 from dataclasses import dataclass, field
 
@@ -180,6 +182,46 @@ def estimate_wall_kernel(ink: np.ndarray) -> tuple[int, float, float]:
     return kernel, line_width, thinnest
 
 
+# A wall-class hypothesis (engine.reconstruction): when set, the thickness filter uses this
+# (kernel, thinnest wall width) instead of choosing it from the surviving-area curve.
+_WALL_CLASS: contextvars.ContextVar = contextvars.ContextVar("floorplan_wall_class", default=None)
+
+
+@contextlib.contextmanager
+def wall_class(kernel: int, thinnest: float):
+    token = _WALL_CLASS.set((int(kernel), float(thinnest)))
+    try:
+        yield
+    finally:
+        _WALL_CLASS.reset(token)
+
+
+def cliff_wall_class(ink: np.ndarray, kmax: int = 40) -> tuple[int, float, float] | None:
+    """(kernel, thinnest, ink share lost) of the strongest wall class by its *cliff*.
+
+    Strokes of one thickness vanish together: as the erosion kernel grows past a wall class's
+    width, a large share of the ink disappears within one or two kernel steps. Anti-aliased or
+    JPEG walls erode gradually before that, so 'nearly flat plateaus' can be missed or found on
+    a tail of filled furniture; the cliff is the steadier mark of the dominant wall width."""
+    widths = _ridge_widths(ink)
+    line_width = float(np.argmax(np.bincount(widths, minlength=8)[1:7]) + 1) if widths.size else 1.0
+    h, w = ink.shape
+    kmax = int(min(kmax, max(8, 0.04 * max(h, w))))
+    a = [_surviving_area_at(ink, k) for k in range(1, kmax + 1)]
+    if not a or a[0] <= 0:
+        return None
+    best = None
+    for k in range(int(line_width) + 3, kmax + 1):        # a[k-1] = area at kernel k
+        loss = (a[k - 2] - a[k - 1]) + ((a[k - 1] - a[k]) if k < kmax else 0.0)
+        share = loss / a[0]
+        if best is None or share > best[2]:
+            best = (k, k, share)
+    if best is None or best[2] < 0.1:
+        return None
+    k_end = float(best[0] - 1)                             # widest kernel that still keeps the class
+    return max(3, int(round(0.55 * k_end))), k_end, float(best[2])
+
+
 def kernel_search(ink: np.ndarray) -> tuple[int, float, float, list[float]]:
     """(erosion kernel, thin-line width, thinnest wall width, surviving area per kernel).
 
@@ -193,6 +235,9 @@ def kernel_search(ink: np.ndarray) -> tuple[int, float, float, list[float]]:
     h, w = ink.shape
     widths = _ridge_widths(ink)
     line_width = float(np.argmax(np.bincount(widths, minlength=8)[1:7]) + 1) if widths.size else 1.0
+    forced = _WALL_CLASS.get()
+    if forced is not None:
+        return forced[0], line_width, forced[1], []
     kmax = max(8, int(0.04 * max(h, w)))
     areas: list[float] = []
 
@@ -1092,6 +1137,28 @@ def _piece_tone(comp, p, g, t, typical_t, image_lab, tone) -> float | None:
     return tone.distance(px)
 
 
+def _wall_directions(bands, min_share: float = 0.03) -> list[float]:
+    """Directions (degrees mod 180) the plan's walls take, weighted by length."""
+    weights: dict = {}
+    total = 0.0
+    for b in bands:
+        d = np.subtract(b.p1, b.p0).astype(float)
+        L = float(np.hypot(*d))
+        if L <= 0:
+            continue
+        a = int(round(math.degrees(math.atan2(d[1], d[0])) % 180.0)) % 180
+        weights[a] = weights.get(a, 0.0) + L
+        total += L
+    if total <= 0:
+        return []
+    return [float(a) for a, w in weights.items() if w >= min_share * total]
+
+
+def _along_walls(v, dirs: list[float], tol: float = 8.0) -> bool:
+    a = math.degrees(math.atan2(float(v[1]), float(v[0]))) % 180.0
+    return any(min(abs(a - d), 180.0 - abs(a - d)) <= tol for d in dirs)
+
+
 def find_gaps(wall_mask, symbol_ink, bands, typical_t, kernel, thick_max, thinnest=None, rejected=None, tone=None, image_lab=None,
               corner_ends=None) -> tuple[list[OpeningCandidate], list[OpeningCandidate]]:
     """Wall gaps from wall end faces (and diagonal band ends). `corner_ends` adds band ends that
@@ -1193,7 +1260,12 @@ def find_gaps(wall_mask, symbol_ink, bands, typical_t, kernel, thick_max, thinne
     for start, stop, t, cov, votes in merged:
         L = float(np.linalg.norm(stop - start))
         existing.append((start, stop, (stop - start) / max(1e-9, L), t, L))
+    wall_dirs = _wall_directions(bands)
     for start, stop, t, paired in _line_bridged_gaps(wall_mask, symbol_ink, typical_t, existing):
+        if wall_dirs and not _along_walls(stop - start, wall_dirs) and float(np.linalg.norm(stop - start)) > 10.0 * typical_t:
+            # at an angle no wall takes, an opening is a door set across a corner (door-sized);
+            # longer lines there are hatch or furniture, not openings
+            continue
         cov = _line_coverage(symbol_ink, start, (stop - start) / np.linalg.norm(stop - start),
                              np.array([-(stop - start)[1], (stop - start)[0]]) / np.linalg.norm(stop - start), t, 0.0, float(np.linalg.norm(stop - start)))
         merged.append([start, stop, t, max(cov, 0.6), 0, "line_pair" if paired else "single_line"])
