@@ -58,9 +58,16 @@ def transfer_types(openings: list[dict], legible: list[dict], scale: float, wall
         o["type_label"] = best.get("type_label", o.get("type_label"))
         o["confidence"] = best["confidence"]
         for key in ("symbol", "glazing_lines", "dashed_glazing", "arc_score", "double_arc_score", "leaf_score",
-                    "door_swing_score", "sliding_panels", "reason"):
+                    "door_swing_score", "sliding_panels", "reason", "hinge", "swing_side", "leaf_angle"):
             if key in best["evidence"]:
                 ev[key] = best["evidence"][key]
+        da = np.subtract(o["end"], o["start"]).astype(float)
+        db = np.subtract(best["end"], best["start"]).astype(float)
+        if float(np.dot(da, db)) < 0:                  # the legible candidate runs the other way
+            if ev.get("hinge") in ("start", "end"):
+                ev["hinge"] = "end" if ev["hinge"] == "start" else "start"
+            if isinstance(ev.get("swing_side"), int):
+                ev["swing_side"] = -ev["swing_side"]
     return changed
 
 

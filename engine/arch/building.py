@@ -26,6 +26,7 @@ import numpy as np
 from .envelope import estimate_envelope, plan_model_network
 
 EXTERIOR = "exterior"
+OUTDOOR = {"Porch", "Terrace", "Balcony", "Deck", "Patio", "Outdoor living"}
 
 
 def _poly(points) -> np.ndarray:
@@ -92,7 +93,8 @@ def build_building(structure, spaces: list, rooms: list, unlabeled: list, openin
             "id": sp["id"],
             "names": [x["name"] for x in n],
             "room_ids": [x["room_id"] for x in n],
-            "kind": "open-plan" if len(n) > 1 else "room" if n else "unnamed",
+            "kind": ("outdoor" if n and all(x["name"] in OUTDOOR for x in n) else
+                     "open-plan" if len(n) > 1 else "room" if n else "unnamed"),
             "area_px": int(sp.get("area_pixels") or counts[k].sum()),
             "area": round(float(sp.get("area_pixels") or counts[k].sum()) / ppu ** 2, 1) if ppu else None,
             "area_unit": f"{unit}²" if ppu and unit else None,
@@ -135,7 +137,17 @@ def build_building(structure, spaces: list, rooms: list, unlabeled: list, openin
                "width_px": o.get("width_pixels"), "width": o.get("width_display"),
                "connects": connects,
                "role": ("exterior" if EXTERIOR in connects else "interior" if len(set(connects)) == 2
-                        else "inside one space" if len(connects) == 2 else "unknown")}
+                        else "inside one space" if len(connects) == 2 else "unknown"),
+               "host_wall": None}
+        outdoor = [x for x in connects if x in by_id and by_id[x]["kind"] == "outdoor"]
+        if rec["role"] == "interior" and len(outdoor) == 1:
+            rec["role"] = "to outdoor space"               # a terrace / balcony door or window
+        rec.update(_opening_object(o, a, b))
+        if "window" in rec and len(outdoor) == 1 and EXTERIOR not in connects:
+            rec["window"]["exterior"] = True
+            rec["window"]["outdoor_space"] = outdoor[0]
+            inside = [x for x in connects if x != outdoor[0]]
+            rec["window"]["adjacent_space"] = inside[0] if inside else None
         opening_records.append(rec)
         if len(set(connects)) == 2:
             edges.append({"a": connects[0], "b": connects[1], "kind": o["type"], "via": o["id"]})
@@ -170,9 +182,19 @@ def build_building(structure, spaces: list, rooms: list, unlabeled: list, openin
                     outside += 1
                 elif labels[yi, xi] < 0 or (env_mask is not None and not env_mask[yi, xi] and labels[yi, xi] <= 0):
                     outside += 1
-        wall_records.append({"id": f"W{i:03d}", "p0": [int(v) for v in p0], "p1": [int(v) for v in p1],
+        wall_records.append({"id": f"WL{i:03d}", "p0": [int(v) for v in p0], "p1": [int(v) for v in p1],
                              "thickness_px": round(float(thickness), 1), "orientation": orientation,
                              "exterior": outside >= 2})
+
+    runs_out = _wall_runs(wall_records, opening_records, t)
+    for sp in space_records:
+        sp["doors"], sp["windows"], sp["passages"] = [], [], []
+    for o in opening_records:
+        for sid in set(o["connects"]):
+            if sid in by_id:
+                by_id[sid]["doors" if o["type"] == "door" else "windows" if o["type"] == "window" else "passages"].append(o["id"])
+    for sp in space_records:
+        sp["exterior_openings"] = sum(1 for o in opening_records if sp["id"] in o["connects"] and o["role"] == "exterior")
 
     # --- shared walls between final spaces --------------------------------------------------------------
     k = max(3, int(round(1.5 * t)) | 1)
@@ -205,6 +227,7 @@ def build_building(structure, spaces: list, rooms: list, unlabeled: list, openin
         "envelope": {"available": env.available,
                      "not_buildings": [{"reason": r, "bbox": bb} for r, bb in env.rejected]},
         "walls": wall_records,
+        "wall_runs": runs_out,
         "openings": opening_records,
         "spaces": space_records,
         "graph": {"nodes": [r["id"] for r in space_records] + [EXTERIOR], "edges": edges},
@@ -215,10 +238,109 @@ def build_building(structure, spaces: list, rooms: list, unlabeled: list, openin
             "open_plan_spaces": sum(r["kind"] == "open-plan" for r in space_records),
             "spaces_outside_buildings": sum(r["building"] is None for r in space_records) if env.available else None,
             "walls": len(wall_records),
+            "wall_runs": len(runs_out),
+            "openings_hosted": sum(o["host_wall"] is not None for o in opening_records),
             "exterior_walls": sum(r["exterior"] for r in wall_records),
             "doors": sum(o["type"] == "door" for o in opening_records),
             "windows": sum(o["type"] == "window" for o in opening_records),
             "exterior_openings": sum(o["role"] == "exterior" for o in opening_records),
+            "outdoor_space_openings": sum(o["role"] == "to outdoor space" for o in opening_records),
+            "outdoor_spaces": sum(r["kind"] == "outdoor" for r in space_records),
             "interior_openings": sum(o["role"] == "interior" for o in opening_records),
         },
     }
+
+
+OPERATION = {"swing arc": ("hinged", 1), "door leaf": ("hinged", 1), "double swing": ("double hinged", 2),
+             "sliding panels": ("sliding", 1)}
+
+
+def _opening_object(o: dict, side_a, side_b) -> dict:
+    """Architectural description of one opening from the classifier's evidence. Side a lies along
+    -normal of the span (start -> end), side b along +normal."""
+    ev = o.get("evidence", {})
+    sym = str(ev.get("symbol", "")).split(" (")[0]
+    if o["type"] == "door":
+        op, leaves = OPERATION.get(sym, ("unspecified", None))
+        hinge = ev.get("hinge")
+        side = ev.get("swing_side")
+        into = None
+        if op.endswith("hinged") and side in (-1, 1):
+            into = side_b if side > 0 else side_a
+        hinge_pts = ([o["start"]] if hinge == "start" else [o["end"]] if hinge == "end"
+                     else [o["start"], o["end"]] if op == "double hinged" else [])
+        return {"door": {"operation": op, "leaves": leaves, "hinges": [[int(v) for v in p] for p in hinge_pts],
+                         "swing_into": into if op.endswith("hinged") else None,
+                         "leaf_angle": ev.get("leaf_angle") if op.endswith("hinged") else None,
+                         "symbol": ev.get("symbol")}}
+    if o["type"] == "window":
+        inside = [x for x in (side_a, side_b) if x not in (None, EXTERIOR)]
+        return {"window": {"exterior": EXTERIOR in (side_a, side_b), "adjacent_space": inside[0] if inside else None,
+                           "glazing_lines": ev.get("glazing_lines"), "symbol": ev.get("symbol")}}
+    return {"passage": {"symbol": ev.get("symbol")}}
+
+
+def _wall_runs(walls: list, openings: list, t: float) -> list:
+    """Continuous architectural boundaries: collinear wall pieces joined across the openings they
+    host (and across junction gaps), so a wall with a door is one wall, not two."""
+    def line_of(p0, p1):
+        p0, p1 = np.asarray(p0, float), np.asarray(p1, float)
+        d = p1 - p0
+        L = float(np.linalg.norm(d))
+        u = d / L if L else np.array([1.0, 0.0])
+        if u[0] < -1e-9 or (abs(u[0]) <= 1e-9 and u[1] < 0):
+            u = -u
+        n = np.array([-u[1], u[0]])
+        return u, n, float(np.dot(p0, n)), sorted((float(np.dot(p0, u)), float(np.dot(p1, u))))
+
+    items = []
+    for wl in walls:
+        u, n, off, (a, b) = line_of(wl["p0"], wl["p1"])
+        items.append(("wall", wl, u, n, off, a, b))
+    for o in openings:
+        u, n, off, (a, b) = line_of(o["p0"], o["p1"])
+        items.append(("opening", o, u, n, off, a, b))
+    tol = max(3.0, 0.75 * t)
+    parent = list(range(len(items)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    order = sorted(range(len(items)), key=lambda i: (round(np.degrees(np.arctan2(items[i][2][1], items[i][2][0]))), items[i][4], items[i][5]))
+    for x, i in enumerate(order):
+        ki, _, ui, _, oi, ai, bi = items[i]
+        for j in order[x + 1:]:
+            kj, _, uj, _, oj, aj, bj = items[j]
+            if abs(float(np.dot(ui, uj))) < 0.995 or abs(oi - oj) > tol:
+                continue
+            gap = max(aj, ai) - min(bi, bj)
+            if gap <= 1.5 * t:
+                parent[find(i)] = find(j)
+    groups: dict = {}
+    for i in range(len(items)):
+        groups.setdefault(find(i), []).append(items[i])
+    runs = []
+    for g in groups.values():
+        wall_items = [x for x in g if x[0] == "wall"]
+        if not wall_items:
+            continue                                   # an opening with no wall on its line
+        u, n, off = wall_items[0][2], wall_items[0][3], float(np.median([x[4] for x in wall_items]))
+        a, b = min(x[5] for x in g), max(x[6] for x in g)
+        rid = f"WR{len(runs) + 1:02d}"
+        ops = [x[1] for x in g if x[0] == "opening"]
+        for o in ops:
+            o["host_wall"] = rid
+        solid = sum(x[6] - x[5] for x in wall_items)
+        open_len = sum(x[6] - x[5] for x in g if x[0] == "opening")
+        p0, p1 = u * a + n * off, u * b + n * off
+        runs.append({"id": rid, "p0": [int(round(v)) for v in p0], "p1": [int(round(v)) for v in p1],
+                     "thickness_px": round(float(np.median([x[1]["thickness_px"] for x in wall_items])), 1),
+                     "exterior": sum(x[1]["exterior"] for x in wall_items) * 2 > len(wall_items),
+                     "segments": [x[1]["id"] for x in wall_items], "openings": [o["id"] for o in ops],
+                     "doors": [o["id"] for o in ops if o["type"] == "door"],
+                     "windows": [o["id"] for o in ops if o["type"] == "window"],
+                     "solid_length_px": int(round(solid)), "open_length_px": int(round(open_len))})
+    return runs

@@ -229,13 +229,18 @@ def arc_scores(dist: np.ndarray, f: Frame, line_width: float) -> dict[str, Any]:
     return best
 
 
+# 30 deg leaves are kept: some drawings show doors barely open (measured: dropping 30 deg cut opening
+# classification on the canonical test cases from 0.88 to 0.79)
+LEAF_ANGLES = (90, 80, 70, 60, 45, 30)
+
+
 def leaf_score(dist: np.ndarray, f: Frame, line_width: float) -> tuple[float, float]:
     """Straight door leaf of length ≈ width from a hinge, opened 30–90°. Returns (score, angle)."""
     best, angle = 0.0, 0.0
     rho = np.linspace(0.15, 0.95, 20)
     for side in (-1, 1):
         for h, e in ((0.0, 1.0), (f.w, -1.0)):
-            for theta in (90, 80, 70, 60, 45, 30):
+            for theta in LEAF_ANGLES:
                 th = math.radians(theta)
                 r = f.w * rho
                 xs, ys = f.points(h + e * r * math.cos(th), side * (0.5 * f.t + r * math.sin(th)))
@@ -413,6 +418,11 @@ def classify_candidate(c: OpeningCandidate, s: StructureResult, thin: np.ndarray
             "double_arc_score": round(arcs["double_arc"], 2),
             "leaf_score": round(leaf, 2),
             "door_swing_score": round(door_symbol, 2),
+            # leaf geometry in the opening's frame: hinge jamb ('start' / 'end' of the span), the side
+            # of the wall the leaf swings to (+1 = along the candidate's normal), leaf opening angle
+            "hinge": arcs["arc_hinge"] if arcs["arc"] >= arcs["double_arc"] * 1.05 else "both",
+            "swing_side": int(arcs["double_side"] if arcs["double_arc"] * 1.05 > arcs["arc"] else arcs["arc_side"]),
+            "leaf_angle": round(float(leaf_angle), 0),
             "sliding_panels": sliding,
             "sliding_shift": round(shift, 2),
             "room_relation": relation,
@@ -437,21 +447,24 @@ def apply_plan_conventions(results: list[dict], candidates: list[OpeningCandidat
     """Plan-level symbol vocabulary: decide outline-only exterior openings from how the
     same drawing marks its doors and windows.
 
-    Every plan has windows. When a drawing shows no glazing-style window anywhere, draws its
-    doors with door symbols (swing, leaf, double, sliding) and never uses a bare outline for a
-    door between rooms, then its repeated outline-only openings in exterior walls are that
-    drawing's window symbol (a frame drawn as a rectangle in the wall). Drawings that already
-    mark windows with glazing lines, or that use outlines for doors, are left unchanged.
+    Every plan has windows. When a drawing marks its doors with door symbols (swing, leaf, double,
+    sliding) and outline-only frames are its dominant window symbol (more of them in exterior walls
+    than glazing-line windows), those repeated outline-only exterior openings are its windows. Some
+    windows elsewhere may still carry glazing lines and an interior passage may be an outline:
+    drawings mix symbols. Where glazing-line windows are the norm, an outline-only exterior gap is
+    an open side (porch, carport) and stays unclassified. (Measured on the canonical test cases:
+    the earlier 'no glazing window anywhere and no interior outline' rule left 11 of 62 windows
+    untyped.)
     """
-    glazing = sum(r["evidence"]["symbol"] in GLAZING_SYMBOLS and r["type"] == "window" for r in results)
     strong_doors = sum(r["evidence"]["symbol"] in STRONG_DOOR_SYMBOLS and r["type"] == "door" for r in results)
-    outline_between = sum(r["evidence"]["symbol"] == "outline only" and r["evidence"]["room_relation"] == "between_rooms"
-                          for r in results)
     exterior_outline = [i for i, (r, c) in enumerate(zip(results, candidates))
                         if r["evidence"]["symbol"] == "outline only" and r["evidence"]["room_relation"] == "room_to_exterior"
                         and c.source != "single_line" and r["evidence"]["face_lines"] >= 1
                         and c.width < 14.0 * max(c.thickness, t_ref)]
-    if glazing or outline_between or strong_doors < 1 or len(exterior_outline) < 2:
+    glazing = sum(r["evidence"]["symbol"] in GLAZING_SYMBOLS and r["type"] == "window" for r in results)
+    # the drawing's dominant window symbol decides: where glazing-line windows are the norm,
+    # an outline-only exterior gap is an open side (porch, carport), not a window
+    if strong_doors < 1 or len(exterior_outline) < 2 or glazing >= len(exterior_outline):
         return
     for i in exterior_outline:
         r = results[i]

@@ -61,3 +61,22 @@ def test_app_serves_the_building_document(tmp_path):
     doc = client.get(data["building_url"])
     assert doc.status_code == 200 and doc.get_json() == data["building"]
     assert client.get("/api/results/" + "0" * 32 + "/building.json").status_code == 404
+
+
+def test_walls_host_their_openings_and_spaces_list_them():
+    img = _two_rooms()
+    s = analyze_structure(img)
+    openings = classify_openings(img, s)
+    b = build_building(s, s.spaces, [], [], openings)
+    hosted = [o for o in b["openings"] if o["host_wall"]]
+    assert len(hosted) == len(b["openings"])
+    interior = next(o for o in b["openings"] if o["role"] == "interior")
+    run = next(r for r in b["wall_runs"] if r["id"] == interior["host_wall"])
+    assert interior["id"] in run["openings"] and len(run["segments"]) == 2       # one wall, two pieces, one opening
+    assert not run["exterior"] and run["open_length_px"] > 0
+    for sp in b["spaces"]:
+        listed = sp["doors"] + sp["windows"] + sp["passages"]
+        assert interior["id"] in listed
+    assert any(r["exterior"] for r in b["wall_runs"])
+    for o in b["openings"]:
+        assert ("door" in o) or ("window" in o) or ("passage" in o)
