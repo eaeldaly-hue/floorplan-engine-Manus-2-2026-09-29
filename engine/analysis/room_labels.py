@@ -13,7 +13,10 @@ are room labels:
   never stacks (it is not alphabetic);
 * a line is a room label when the lexicon finds a room term in it, or when a two-letter room
   abbreviation (BR, WC, CL) stands with a room number;
-* tokens that are measurements (dimensions, areas, units) are not part of the name.
+* tokens that are measurements (dimensions, areas, units) are not part of the name;
+* a room term fused with its number by OCR ("BATH1") is read as the term and the number;
+* a line stacks onto a label only if it holds a room word or a room number, or was read with
+  high confidence: a misread dimension line under the name ("7'x8'" -> "Txs") is debris.
 
 Nearby but unrelated labels stay apart: they are on different baselines, or too far apart,
 or not stacked on a common centre.
@@ -21,13 +24,32 @@ or not stacked on a common centre.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 
 from .ocr import OCRBox
 from .ocr_fusion import OCRTextGroup, normalize_ocr_text
 from .room_lexicon import abbreviations_active, is_room_word, is_short_abbreviation, normalize, room_name
 
+_FUSED_NUMBER = re.compile(r"([A-Za-z]{2,})(\d{1,2})")
+_FUSED_SPLIT = re.compile(r"[A-Za-z]{2,} \d{1,2}")
+STACK_CONFIDENCE = 80.0
 _MEASURE = re.compile(r"\d+\s*['′\"″]|\d+[.,]\d+|\bM2\b|M²|\bSQ\b|\bFT\b|\d{3,}", re.IGNORECASE)
+
+
+def _split_fused(word: OCRBox) -> OCRBox:
+    """'BATH1' -> 'BATH 1' when the letters are a room term (OCR dropped the space)."""
+    m = _FUSED_NUMBER.fullmatch(word.text.strip().strip(".,:;"))
+    if m and room_name(m.group(1)):
+        return dataclasses.replace(word, text=f"{m.group(1)} {m.group(2)}")
+    return word
+
+
+def _stackable(line: list[OCRBox]) -> bool:
+    """A line that may continue a label: room vocabulary, a room number, or a confident read."""
+    if any(is_room_word(w.text) or w.text.strip().isdigit() for w in line):
+        return True
+    return sum(w.confidence for w in line) / len(line) >= STACK_CONFIDENCE
 
 
 def _is_name_token(text: str) -> bool:
@@ -129,6 +151,8 @@ def _stack(lines: list[list[OCRBox]]) -> list[list[list[OCRBox]]]:
                     continue
                 if lines[j][0].rotation != lines[stack[-1]][0].rotation:
                     continue
+                if not _stackable(lines[j]):
+                    continue
                 if abs((a0 + a1) / 2 - cx) > 0.35 * max(x1 - x0, a1 - a0):
                     continue
                 nxt = j
@@ -143,7 +167,8 @@ def _stack(lines: list[list[OCRBox]]) -> list[list[list[OCRBox]]]:
 
 def build_room_labels(boxes) -> list[OCRTextGroup]:
     """Room labels (possibly multi-word / multi-line) from accepted OCR words."""
-    words = [b for b in boxes if b.kind != "DIMENSION" and _is_name_token(b.text)]
+    words = [b for b in (_split_fused(b) for b in boxes)
+             if b.kind != "DIMENSION" and (_is_name_token(b.text) or _FUSED_SPLIT.fullmatch(b.text))]
     lines = _lines(words)
     # Only lines made of name tokens can stack; a stack must contain a room term somewhere.
     # Number-only lines (areas, codes) never stack onto a name: room numbers are on the name's line.

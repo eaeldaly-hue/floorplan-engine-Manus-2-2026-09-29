@@ -1405,6 +1405,11 @@ class FloorPlanAnalyzer:
                 "Room-like text outside the building was not used as a room label: "
                 + ", ".join(f"'{text}'" for text in rejected_labels[:4])
             )
+        if ocr_result is not None and pytesseract is not None:
+            # context-aware reading: the text lines inside unnamed spaces, read one at a time
+            from .analysis.context_ocr import reread
+            room_lines, context_notes = reread(image, structure, room_lines)
+            room_lines, _ = _labels_inside_building(room_lines, structure)
         spaces = _split_shared_spaces(structure, room_lines, ocr_result)
         if cleaned is not None and cleaned.applicable:
             # the cleaner typed (and sealed) the doors and windows: report those, related to the
