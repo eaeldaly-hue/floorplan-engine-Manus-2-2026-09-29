@@ -150,6 +150,10 @@ def create_app(test_config: dict | None = None) -> Flask:
             # the structured plan (engine.arch.building) as a downloadable document
             (result_dir / "building.json").write_text(json.dumps(result["building"]))
             result["building_url"] = f"/api/results/{result_id}/building.json"
+        building_png = result.pop("building_overlay_png", None)
+        if building_png:
+            (result_dir / "building-overlay.png").write_bytes(building_png)
+            result["building_overlay_url"] = f"/api/results/{result_id}/building.png"
         result["openings_overlay_url"] = f"/api/results/{result_id}/openings.png"
         if page_image is not None:
             # the exact image that was analysed, so the Workbench draws over the same pixels
@@ -362,6 +366,12 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not (directory / "openings-overlay.png").is_file():
             return jsonify({"error": "انتهت صلاحية النتيجة أو لم تعد موجودة."}), 404
         return send_from_directory(directory, "openings-overlay.png", mimetype="image/png", max_age=0)
+
+    @app.get("/api/results/<result_id>/building.png")
+    def get_building_overlay(result_id: str):
+        if not _valid_id(result_id) or not (result_root / result_id / "building-overlay.png").is_file():
+            return jsonify({"error": "انتهت صلاحية النتيجة أو لم تعد موجودة."}), 404
+        return send_from_directory(result_root / result_id, "building-overlay.png", mimetype="image/png", max_age=0)
 
     @app.get("/api/results/<result_id>/building.json")
     def get_building(result_id: str):

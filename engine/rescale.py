@@ -65,7 +65,7 @@ def to_original(result: dict, f: float, width: int, height: int) -> dict:
         return result
     out = _walk(result, f)
     out["image"] = {"width": width, "height": height}
-    for key in ("overlay_png", "openings_overlay_png"):
+    for key in ("overlay_png", "openings_overlay_png", "building_overlay_png"):
         if isinstance(result.get(key), (bytes, bytearray)):
             out[key] = _png(result[key], (width, height))
     for key in ("_clean_result",):

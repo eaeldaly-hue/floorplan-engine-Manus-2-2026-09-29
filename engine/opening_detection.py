@@ -210,7 +210,8 @@ def arc_scores(dist: np.ndarray, f: Frame, line_width: float) -> dict[str, Any]:
     best = {"arc": 0.0, "arc_side": 0, "arc_hinge": None, "double_arc": 0.0, "double_side": 0}
     phis = np.radians(np.linspace(10, 80, 26))
     for side in (-1, 1):
-        for hinge_v in (side * 0.5 * f.t, 0.0):
+        # the hinge is drawn on the wall's face, on its axis, or in between (pivot offsets)
+        for hinge_v in (side * 0.5 * f.t, side * 0.25 * f.t, 0.0):
             for h, e in ((0.0, 1.0), (f.w, -1.0)):
                 for scale in (1.0, 0.94, 1.06):
                     r = f.w * scale
@@ -219,13 +220,14 @@ def arc_scores(dist: np.ndarray, f: Frame, line_width: float) -> dict[str, Any]:
                     if score > best["arc"]:
                         best.update(arc=score, arc_side=side, arc_hinge="start" if h == 0 else "end")
             # double door: two half-width arcs from both jambs
-            r = f.w / 2
-            pair = []
-            for h, e in ((0.0, 1.0), (f.w, -1.0)):
-                xs, ys = f.points(h + e * r * np.cos(phis), hinge_v + side * r * np.sin(phis))
-                pair.append(_curve_support(_near_ink(dist, xs, ys, _tol(r, line_width))))
-            if min(pair) > best["double_arc"]:
-                best.update(double_arc=min(pair), double_side=side)
+            for scale in (1.0, 0.94, 1.06):
+                r = f.w / 2 * scale
+                pair = []
+                for h, e in ((0.0, 1.0), (f.w, -1.0)):
+                    xs, ys = f.points(h + e * r * np.cos(phis), hinge_v + side * r * np.sin(phis))
+                    pair.append(_curve_support(_near_ink(dist, xs, ys, _tol(r, line_width))))
+                if min(pair) > best["double_arc"]:
+                    best.update(double_arc=min(pair), double_side=side)
     return best
 
 

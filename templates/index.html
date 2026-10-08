@@ -100,8 +100,8 @@
             <button type="button" data-view="combined" disabled>Combined</button>
             <button type="button" data-view="cleaned" disabled title="The cleaned architectural plan the recognition ran on (enable 'Clean plan first')">Cleaned</button>
             <button type="button" data-view="elements" disabled title="Every element of the drawing by type: kept (walls, doors, windows) and suppressed">Elements</button>
-            <button type="button" data-view="walls" disabled class="is-unavailable"
-              title="Not available: /api/analyze does not return wall geometry (no segments or wall mask), so there is nothing to draw.">Walls <span class="na">n/a</span></button>
+            <button type="button" data-view="building" disabled
+              title="The structured plan: building outline, exterior / interior walls, doors with their swing, windows, passages, space ids and how the spaces connect">Building</button>
           </div>
           <div class="toolbar-group">
             <div class="segmented" id="mode-tabs" role="group" aria-label="Layout">

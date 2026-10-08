@@ -14,6 +14,7 @@ const VIEW_TITLES = {
   combined: ['Combined', 'all detections over the original'],
   cleaned: ['Cleaned plan', 'architectural skeleton the recognition ran on, with the recognised rooms'],
   elements: ['Elements', 'kept: walls black · doors green · windows orange · suppressed: grey'],
+  building: ['Building', 'walls exterior red · interior blue · doors magenta with swing · windows orange · spaces and links'],
 };
 const CLEANING_VIEWS = { cleaned: 'cleaned', elements: 'elements' };
 const FALLBACK_SUBTITLES = {
@@ -243,7 +244,7 @@ export class Viewer {
   buildPane(kind, width, height) {
     const previewOk = Boolean(this.preview?.ok);
     const [title, subtitle] = VIEW_TITLES[kind];
-    const fallback = kind !== 'original' && !CLEANING_VIEWS[kind] && !previewOk;
+    const fallback = kind !== 'original' && !CLEANING_VIEWS[kind] && kind !== 'building' && !previewOk;
     const head = el('div', { class: 'pane-head' }, el('strong', { text: title }),
       el('span', { text: `· ${fallback ? FALLBACK_SUBTITLES[kind] : subtitle}` }));
     const plane = el('div', { class: 'plane' });
@@ -253,6 +254,7 @@ export class Viewer {
     let src = null;
     const cleaningUrl = CLEANING_VIEWS[kind] && this.result?.cleaning?.urls?.[CLEANING_VIEWS[kind]];
     if (cleaningUrl) src = cleaningUrl;
+    else if (kind === 'building') src = this.result?.building_overlay_url || null;
     else if (previewOk) src = this.preview.url;
     else if (kind === 'openings') src = this.result.openings_overlay_url;
     else if (kind !== 'original') src = this.result.overlay_url;
@@ -276,8 +278,8 @@ export class Viewer {
       if (kind === 'cleaned') {
         this.drawGeometry(svgRoot, width, height, 'rooms');
         drawn = true;
-      } else if (kind === 'elements') {
-        // the typed elements image is the content: nothing drawn over it
+      } else if (kind === 'elements' || kind === 'building') {
+        // the server image is the content (typed elements / the structured plan): nothing drawn over it
       } else if ((kind !== 'original' && previewOk) || (kind === 'combined' && !previewOk)) {
         this.drawGeometry(svgRoot, width, height, kind);
         drawn = true;
@@ -432,8 +434,9 @@ export class Viewer {
     const hasResult = Boolean(this.result);
     for (const button of this.els.viewTabs.querySelectorAll('button[data-view]')) {
       const view = button.dataset.view;
-      const available = hasResult && view !== 'walls'
-        && (!CLEANING_VIEWS[view] || Boolean(this.result?.cleaning?.urls?.[CLEANING_VIEWS[view]]));
+      const available = hasResult
+        && (!CLEANING_VIEWS[view] || Boolean(this.result?.cleaning?.urls?.[CLEANING_VIEWS[view]]))
+        && (view !== 'building' || Boolean(this.result?.building_overlay_url));
       if (CLEANING_VIEWS[view]) {
         button.dataset.help ||= button.title;
         button.title = cleaningTabTitle(this.result, available, button.dataset.help);
@@ -483,7 +486,7 @@ export class Viewer {
     ];
     // When the layer toggles are shown they already act as the colour key; the
     // legend then only adds what they do not cover (dimension-estimate rooms).
-    const showsRooms = analysis.kind !== 'openings' && analysis.kind !== 'elements';
+    const showsRooms = analysis.kind !== 'openings' && analysis.kind !== 'elements' && analysis.kind !== 'building';
     const items = analysis.drawn
       ? (showsRooms ? [item('swatch-estimate', 'Room · dimension estimate')] : [])
       : analysis.kind === 'rooms' ? roomItems()

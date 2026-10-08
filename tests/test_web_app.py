@@ -139,7 +139,7 @@ def test_sample_endpoint_returns_rooms_and_a_fetchable_overlay(client):
     assert overlay.data.startswith(b"\x89PNG\r\n\x1a\n")
 
     result_dir = Path(client.application.config["UPLOAD_FOLDER"]) / data["result_id"]
-    assert sorted(path.name for path in result_dir.iterdir()) == ["building.json", "openings-overlay.png", "rooms-overlay.png"]
+    assert sorted(path.name for path in result_dir.iterdir()) == ["building-overlay.png", "building.json", "openings-overlay.png", "rooms-overlay.png"]
 
 
 def test_result_id_path_is_validated(client):
