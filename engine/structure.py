@@ -628,6 +628,80 @@ def _line_coverage(symbol_ink, start, d, n, t, u0, u1) -> float:
     return float(profile.any(axis=1).mean())
 
 
+def object_edges_enabled() -> bool:
+    import os
+    return os.environ.get("FLOORPLAN_OBJECT_EDGES", "1").strip().lower() not in ("0", "off", "false", "no")
+
+
+class _ObjectOutlines:
+    """Lines along a wall gap that belong to an object drawn inside a room, not to the opening.
+
+    A threshold, glazing or sliding-panel symbol lies inside the wall band. A counter, an
+    appliance, a cabinet or a stair box can also have one edge on the wall axis - its other
+    edges then go into the room and it closes with a back edge parallel to the gap, well
+    beyond the wall's thickness. Such a component is an object outline: it says nothing about
+    an opening there, and must not turn a wide gap into a 'drawn' (sealed) one.
+    """
+
+    def __init__(self, symbol_ink: np.ndarray):
+        self.count, self.labels, self.stats, _ = cv2.connectedComponentsWithStats(
+            (symbol_ink > 0).astype(np.uint8), connectivity=8)
+        self._verdict: dict = {}
+
+    def _profile(self, start, d, n, t, u0, u1) -> np.ndarray:
+        """Component ids along the gap (rows = positions along it, cols = offsets across the band),
+        sampled exactly like _line_coverage."""
+        width = u1 - u0
+        u = np.linspace(u0 + 0.1 * width, u1 - 0.1 * width, max(5, int(width * 0.8)))
+        v = np.arange(-0.5 * t - 2, 0.5 * t + 3, 1.0)
+        xs = start[0] + d[0] * u[:, None] + n[0] * v[None, :]
+        ys = start[1] + d[1] * u[:, None] + n[1] * v[None, :]
+        h, w = self.labels.shape
+        xi, yi = np.floor(xs + 0.5).astype(int), np.floor(ys + 0.5).astype(int)
+        ok = (xi >= 0) & (xi < w) & (yi >= 0) & (yi < h)
+        out = np.zeros(xi.shape, np.int32)
+        out[ok] = self.labels[yi[ok], xi[ok]]
+        return out
+
+    def is_object(self, k, start, d, n, t, gap) -> bool:
+        key = (k, round(float(start[0])), round(float(start[1])), round(float(d[0]), 2), round(float(d[1]), 2))
+        if key in self._verdict:
+            return self._verdict[key]
+        x, y, bw, bh, _ = (int(v) for v in self.stats[k])
+        ys, xs = np.nonzero(self.labels[y:y + bh, x:x + bw] == k)
+        px, py = xs + x - start[0], ys + y - start[1]
+        uu = px * d[0] + py * d[1]
+        vv = px * n[0] + py * n[1]
+        verdict = False
+        lo, hi = float(uu.min()), float(uu.max())
+        if lo >= -1.5 * t and hi <= gap + 1.5 * t and hi - lo >= 0.85 * gap:
+            # spans exactly the opening, jamb to jamb: drawn for it (an overhead garage door,
+            # a door leaf drawn open in plan) - opening evidence, not a room object
+            self._verdict[key] = False
+            return False
+        for side in (1, -1):
+            far = side * vv >= 3.0 * t
+            if far.sum() < 3 * t:
+                continue
+            # a back edge: many pixels at one depth, spread along the gap direction
+            bins = np.round(side * vv[far] / 2.0).astype(int)
+            best = np.bincount(bins - bins.min()).argmax() + bins.min()
+            on = np.abs(np.round(side * vv[far] / 2.0) - best) <= 1
+            span = float(np.ptp(uu[far][on])) if on.any() else 0.0
+            if span >= max(3.0 * t, 0.3 * gap):
+                verdict = True
+                break
+        self._verdict[key] = verdict
+        return verdict
+
+    def coverage(self, start, d, n, t, u0, u1, gap) -> tuple[float, int]:
+        """(line coverage without object outlines, number of object outlines on the gap)."""
+        prof = self._profile(start, d, n, t, u0, u1)
+        objects = [k for k in set(np.unique(prof).tolist()) - {0} if self.is_object(k, start, d, n, t, gap)]
+        hit = (prof > 0) & ~np.isin(prof, objects) if objects else prof > 0
+        return float(hit.any(axis=1).mean()), len(objects)
+
+
 def thin_lines(symbol_ink: np.ndarray, wall_mask: np.ndarray) -> np.ndarray:
     """Drawing lines that are not part of a wall (wall edges excluded)."""
     return cv2.bitwise_and(symbol_ink, cv2.bitwise_not(cv2.dilate(wall_mask, np.ones((5, 5), np.uint8))))
@@ -984,6 +1058,7 @@ def find_gaps(wall_mask, symbol_ink, bands, typical_t, kernel, thick_max, thinne
     h, w = wall_mask.shape
     thinnest = float(thinnest) if thinnest else typical_t
     symbol_ink = thin_lines(symbol_ink, wall_mask)
+    outlines = _ObjectOutlines(symbol_ink) if object_edges_enabled() else None
     ends = _axis_end_faces(wall_mask, kernel, thick_max)
     for band in bands:
         if band.orientation != "diagonal":
@@ -1011,6 +1086,8 @@ def find_gaps(wall_mask, symbol_ink, bands, typical_t, kernel, thick_max, thinne
         if gap is None:
             continue
         coverage = _line_coverage(symbol_ink, refined, d, n, t, 0.0, gap)
+        if outlines is not None and coverage >= 0.5:
+            coverage = outlines.coverage(refined, d, n, t, 0.0, gap, gap)[0]
         long_plain = False
         # clearly thinner than the thinnest real walls — judged on the wall's cross-section just
         # behind the end (end faces of anti-aliased walls are often shorter than the wall)
@@ -1115,6 +1192,8 @@ def find_gaps(wall_mask, symbol_ink, bands, typical_t, kernel, thick_max, thinne
         for u0, u1 in parts:
             a, b = start + d * u0, start + d * u1
             cov_part = _line_coverage(symbol_ink, start, d, n, t, u0, u1) if source == "wall_gap" else cov
+            if outlines is not None and source == "wall_gap" and cov_part >= 0.5:
+                cov_part = outlines.coverage(start, d, n, t, u0, u1, gap)[0]
             candidates.append(OpeningCandidate("", tuple(map(float, a)), tuple(map(float, b)), t, orient, cov_part, votes, source,
                                                jambs=tuple(jambs)))
     candidates.sort(key=lambda c: (round(c.center[1] / 10), c.center[0]))
