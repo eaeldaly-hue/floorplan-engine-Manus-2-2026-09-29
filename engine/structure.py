@@ -1137,6 +1137,33 @@ def _piece_tone(comp, p, g, t, typical_t, image_lab, tone) -> float | None:
     return tone.distance(px)
 
 
+_DOOR_DIST: dict = {}
+
+
+def _drawn_door(symbol_ink, m) -> bool:
+    """A long plain gap found from one wall end only is kept when a door is drawn in it: a swing
+    arc of radius ~ its width, or two half-width arcs (double door). The door is evidence for the
+    opening - and so for the wall it interrupts - where the second jamb was not recognised."""
+    if not DOOR_RESCUE:
+        return False
+    from engine.opening_detection import Frame, arc_scores
+
+    key = id(symbol_ink)
+    if key not in _DOOR_DIST:
+        _DOOR_DIST.clear()
+        _DOOR_DIST[key] = cv2.distanceTransform(255 - (symbol_ink > 0).astype(np.uint8) * 255, cv2.DIST_L2, 3)
+    start, stop, t = np.asarray(m[0], float), np.asarray(m[1], float), float(m[2])
+    w = float(np.linalg.norm(stop - start))
+    if w < 4 * t:
+        return False
+    d = (stop - start) / w
+    a = arc_scores(_DOOR_DIST[key], Frame(start, d, np.array([-d[1], d[0]]), w, max(3.0, t)), 1.0)
+    return max(a["arc"], a["double_arc"]) >= 0.75
+
+
+DOOR_RESCUE = True
+
+
 def _wall_directions(bands, min_share: float = 0.03) -> list[float]:
     """Directions (degrees mod 180) the plan's walls take, weighted by length."""
     weights: dict = {}
@@ -1237,7 +1264,7 @@ def find_gaps(wall_mask, symbol_ink, bands, typical_t, kernel, thick_max, thinne
             merged.append([start, stop, t, cov, 1])
             if long_plain:
                 long_plain_ids.add(id(merged[-1]))
-    merged = [m for m in merged if not (id(m) in long_plain_ids and m[4] < 2)]
+    merged = [m for m in merged if not (id(m) in long_plain_ids and m[4] < 2 and not _drawn_door(symbol_ink, m))]
 
     # A wall end that is already the jamb of another opening does not also start a
     # plain, one-sided gap in a different direction (e.g. across a hallway).

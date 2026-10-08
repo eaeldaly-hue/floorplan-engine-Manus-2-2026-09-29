@@ -114,3 +114,19 @@ def test_real_wall_class_hypothesis_rescues_a_collapsed_reading():
     r = FloorPlanAnalyzer().analyze(img, "5.jpeg")
     assert r["reconstruction"]["chosen"] == "wall-class"
     assert r["opening_count"] >= 10
+
+
+@pytest.mark.skipif(not (REAL / "3.pdf").exists(), reason="real test plans not available")
+def test_real_vector_pdf_default_path_uses_the_cleaned_reading_when_it_explains_more():
+    """Without the cleaning toggle, a CAD page whose raster reading is broken is read from its own
+    vector geometry (benchmark.pdf_plans variant F: 3.pdf p4 7 -> 18 of 19 rooms)."""
+    from benchmark.holdout_inputs import load
+    from engine.analyzer import FloorPlanAnalyzer
+    from engine.cleaning.cleaner import clean
+
+    image, evidence, _ = load(REAL / "3.pdf", 4)
+    r = FloorPlanAnalyzer().analyze(image, "3.pdf", text_evidence=evidence or None,
+                                    cleaner_candidate=lambda: clean(image, REAL / "3.pdf", 4, evidence, mode="vector"))
+    assert r["reconstruction"]["chosen"] == "vector-cleaned"
+    assert r["room_count"] >= 10 and r["door_count"] >= 10
+    assert r["_clean_result"].applicable

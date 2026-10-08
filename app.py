@@ -107,11 +107,14 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     def analyze_and_store(image: np.ndarray, filename: str, load_warnings: list[str], extra: dict | None = None,
                           page_image: np.ndarray | None = None, text_evidence: tuple = (),
-                          cleaned=None):
+                          cleaned=None, cleaner_candidate=None, candidate_notes: list | None = None):
         cleaner = cleaned                     # deferred cleaning step (run_cleaner) or None
         try:
             if cleaner is not None:
                 result = analyzer.analyze(image, filename, text_evidence=text_evidence or None, cleaner=cleaner)
+            elif cleaner_candidate is not None:
+                result = analyzer.analyze(image, filename, text_evidence=text_evidence or None,
+                                          cleaner_candidate=cleaner_candidate)
             elif text_evidence:
                 result = analyzer.analyze(image, filename, text_evidence=text_evidence)
             else:
@@ -125,7 +128,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         result_id = uuid.uuid4().hex
         result_dir = result_root / result_id
         result_dir.mkdir(parents=True, exist_ok=False)
-        cleaned = result.pop("_clean_result", None) if cleaner is not None else None
+        cleaned = result.pop("_clean_result", None)
+        if cleaned is not None and cleaner is None and candidate_notes:
+            # the cleaned vector reading was chosen by the reconstruction (no toggle): say so
+            result["warnings"] = list(candidate_notes) + result["warnings"]
         overlay_png = result.pop("overlay_png")
         (result_dir / "rooms-overlay.png").write_bytes(overlay_png)
         if cleaned is not None:
@@ -155,6 +161,10 @@ def create_app(test_config: dict | None = None) -> Flask:
             result.update(extra)
         _trim_old_results(result_root, keep=30)
         return jsonify(result)
+
+    def enabled_hypotheses() -> bool:
+        from engine.reconstruction import enabled
+        return enabled()
 
     def run_cleaner(image, warnings, pdf_path, page, evidence, body):
         """Architectural Cleaning (engine.cleaning) as a deferred step: None when off (the analysis
@@ -289,8 +299,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         elif page_text.reason and page_text.reason != "no text layer":
             warnings.append(f"PDF text layer not used: {page_text.reason}; text was read by OCR.")
         cleaned = run_cleaner(image, warnings, directory / "source.pdf", number, evidence, body)
+        candidate, notes = None, []
+        if cleaned is None and enabled_hypotheses():
+            # without the toggle the page's vector geometry is still a candidate reading: used only
+            # when the default reading is broken and the cleaned one explains the page better
+            candidate = lambda: _clean_now(image, notes, directory / "source.pdf", number, evidence, "vector")  # noqa: E731
         return analyze_and_store(image, f"{stem}-page-{number}", warnings, {"source": source}, page_image=image,
-                                 text_evidence=evidence, cleaned=cleaned)
+                                 text_evidence=evidence, cleaned=cleaned, cleaner_candidate=candidate,
+                                 candidate_notes=notes)
 
     @app.get("/")
     def index():

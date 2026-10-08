@@ -44,24 +44,23 @@ def category(name: str | None) -> str:
 # variants
 # ---------------------------------------------------------------------------
 
-def _analyze(image, name, evidence, structure_image=None, engine="legacy", cleaner=None):
+def _analyze(image, name, evidence, structure_image=None, engine="legacy", cleaner=None, cleaner_candidate=None):
     """Production analyzer; returns (response, final structure used for rooms)."""
     from engine import analyzer as analyzer_module
     from engine.analyzer import FloorPlanAnalyzer
 
     captured = {}
-    original = analyzer_module.plan_adapter.finish
+    original = analyzer_module._split_shared_spaces
 
-    def spy(pending, lines, structure):
-        out = original(pending, lines, structure)
-        captured["structure"] = out[2]
-        return out
-    analyzer_module.plan_adapter.finish = spy
+    def spy(structure, lines, ocr_result):
+        captured["structure"] = structure          # the structure the rooms are built on
+        return original(structure, lines, ocr_result)
+    analyzer_module._split_shared_spaces = spy
     try:
         result = FloorPlanAnalyzer().analyze(image, name, text_evidence=evidence or None, structure_image=structure_image,
-                                             structure_engine=engine, cleaner=cleaner)
+                                             structure_engine=engine, cleaner=cleaner, cleaner_candidate=cleaner_candidate)
     finally:
-        analyzer_module.plan_adapter.finish = original
+        analyzer_module._split_shared_spaces = original
     return result, captured["structure"]
 
 
@@ -110,7 +109,17 @@ def variant_e(ctx):
     return None if not cleaned["r"].applicable else result
 
 
-VARIANTS = {"A": variant_a, "B": variant_b, "C": variant_c, "D": variant_d, "E": variant_e}
+def variant_f(ctx):
+    """Default (no cleaning toggle) with the page's cleaned vector reading as a hypothesis: used only
+    when the default reading is broken and the cleaned one explains the page better"""
+    from engine.cleaning.cleaner import clean
+
+    def candidate():
+        return clean(ctx["image"], ctx["pdf"], ctx["page"], ctx["evidence"], mode="vector")
+    return _analyze(ctx["image"], ctx["name"], ctx["evidence"], cleaner_candidate=candidate)
+
+
+VARIANTS = {"A": variant_a, "F": variant_f, "B": variant_b, "C": variant_c, "D": variant_d, "E": variant_e}
 
 
 # ---------------------------------------------------------------------------

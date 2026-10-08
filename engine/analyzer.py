@@ -1279,19 +1279,25 @@ class FloorPlanAnalyzer:
 
     def analyze(self, image: np.ndarray, source_name: str = "floor-plan", text_evidence=None,
                 structure_image: np.ndarray | None = None, structure_engine: str = "legacy",
-                abbreviations: bool | None = None, cleaner=None) -> dict[str, Any]:
+                abbreviations: bool | None = None, cleaner=None, cleaner_candidate=None) -> dict[str, Any]:
         """See `_analyze`. `abbreviations` (experimental): drafting abbreviations (BDRM, BA-1, KIT,
         W/D...) count as room names; default: only with a structural image or a cleaner.
         `cleaner`: callable returning an engine.cleaning CleanResult; it runs in the structural
         job (concurrently with OCR) and, when applicable, its recognition image is the geometry
-        input. The CleanResult is returned under the private key "_clean_result"."""
-        use = (structure_image is not None or cleaner is not None) if abbreviations is None else abbreviations
+        input. The CleanResult is returned under the private key "_clean_result".
+        `cleaner_candidate`: like `cleaner`, but only a hypothesis (engine.reconstruction): it runs
+        when the default reading of the page is broken, and its cleaned reading is used only if it
+        explains the page's labels and text better (a vector PDF analysed without the cleaning
+        toggle)."""
+        use = (structure_image is not None or cleaner is not None or cleaner_candidate is not None) \
+            if abbreviations is None else abbreviations
         with room_lexicon.abbreviations(use):
-            return self._analyze(image, source_name, text_evidence, structure_image, structure_engine, cleaner)
+            return self._analyze(image, source_name, text_evidence, structure_image, structure_engine, cleaner,
+                                 cleaner_candidate)
 
     def _analyze(self, image: np.ndarray, source_name: str = "floor-plan", text_evidence=None,
                  structure_image: np.ndarray | None = None, structure_engine: str = "legacy",
-                 cleaner=None) -> dict[str, Any]:
+                 cleaner=None, cleaner_candidate=None) -> dict[str, Any]:
         """`text_evidence`: optional OCR-style boxes of the document's own text in this image's
         pixel frame (a PDF text layer, ingest.pdf_text). It is merged with OCR of the page; when
         it is None (images, scans) the analysis is exactly the OCR-only analysis.
@@ -1334,14 +1340,26 @@ class FloorPlanAnalyzer:
                     geom = cleaned.recognition_image
             st = analyze_structure(geom)
             prefer = geom is not image and structure_engine == "plan"
-            pending = plan_adapter.prepare(geom, st, evidence_image=image if prefer else None, prefer=prefer)
-            hyps, blocks = None, []
+            hyps, blocks, vector = None, [], None
             if geom is image:
                 # ambiguous plans get alternative readings (engine.reconstruction); easy ones run once
                 from . import reconstruction
-                hyps = reconstruction.generate(geom, st)
+                if cleaner_candidate is not None and (plan_adapter.legacy_failed(st) or reconstruction._suspicious(st)):
+                    # the page's vector geometry, cleaned: the first alternative for a broken page
+                    cand = cleaner_candidate()
+                    if cand is not None and cand.applicable:
+                        vector = reconstruction.Hypothesis("vector-cleaned", 1.0, cand.recognition_image,
+                                                           analyze_structure(cand.recognition_image),
+                                                           f"the page's vector geometry, cleaned ({cand.source})")
+                        vector.cleaned = cand
+                hyps = reconstruction.generate(geom, st, vector_candidate=vector is not None)
+                if vector is not None:
+                    hyps.append(vector)
                 if len(hyps) > 1:
                     blocks = reconstruction.text_blocks(image)
+            # the Plan Model fallback is not needed when the page's own vectors give the reading
+            pending = None if vector is not None else plan_adapter.prepare(
+                geom, st, evidence_image=image if prefer else None, prefer=prefer)
             return cleaned, geom, st, pending, (hyps, blocks)
 
         background = ThreadPoolExecutor(max_workers=1, thread_name_prefix="floorplan-structure") \
@@ -1416,6 +1434,9 @@ class FloorPlanAnalyzer:
                 pending_plan = None
             best, reconstruction_report = reconstruction.choose(hyps, evidence, blocks)
             structure = best.structure
+            if best.name == "vector-cleaned":
+                cleaned, geometry = best.cleaned, best.image
+                pending_plan = None
             if best.name == "plan-model":
                 plan_model, plan_notes = pm, pm_notes
             if best.scale != 1.0:
@@ -1536,7 +1557,7 @@ class FloorPlanAnalyzer:
             warnings.append(f"Structured building model unavailable: {type(exc).__name__}")
         if plan_model is not None:
             result["plan_model"] = plan_model
-        if cleaner is not None:
+        if cleaner is not None or (cleaned is not None and cleaner_candidate is not None):
             result["_clean_result"] = cleaned
         if reconstruction_report is not None:
             result["reconstruction"] = reconstruction_report

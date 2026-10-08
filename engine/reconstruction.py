@@ -46,6 +46,7 @@ UNDER_RESOLVED_T = 6.0          # px: thinner walls cannot be separated from lin
 TARGET_T = 12.0                 # px: wall thickness of the normalised reading
 MAX_SCALE = 3.5
 MAX_PIXELS = 16_000_000
+MAX_CLIFF_PIXELS = 8_000_000    # the wall-class re-read is a full structural pass
 MIN_GAIN = 0.25                 # a hypothesis must beat the default by this much
 
 
@@ -63,6 +64,7 @@ class Hypothesis:
     wall_class: tuple | None = None
     score: float | None = None
     parts: dict = field(default_factory=dict)
+    cleaned: object = None            # the CleanResult behind a 'vector-cleaned' reading
 
 
 def _suspicious(s) -> str | None:
@@ -94,15 +96,17 @@ def _cliff(image, s0, scale: float, name: str, why: str) -> Hypothesis | None:
                       f"(kernel {c[0]}, walls ~{c[1]:.0f} px, {c[2]:.0%} of the ink)", wall_class=c[:2])
 
 
-def generate(image: np.ndarray, s0) -> list[Hypothesis]:
-    """The default reading plus the alternatives its structural signals call for."""
+def generate(image: np.ndarray, s0, vector_candidate: bool = False) -> list[Hypothesis]:
+    """The default reading plus the alternatives its structural signals call for.
+    `vector_candidate`: the page's own vector geometry will be offered as a reading; the raster
+    wall-class re-read is then not needed (and on dense sheets it is the costliest reading)."""
     from engine.structure import analyze_structure
 
     hyps = [Hypothesis("default", 1.0, image, s0, "single reading")]
     if not enabled():
         return hyps
     why = _suspicious(s0)
-    if why:
+    if why and not vector_candidate and image.shape[0] * image.shape[1] <= MAX_CLIFF_PIXELS:
         h = _cliff(image, s0, 1.0, "wall-class", why)
         if h:
             hyps.append(h)
