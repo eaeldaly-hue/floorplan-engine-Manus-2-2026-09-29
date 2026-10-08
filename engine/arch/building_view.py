@@ -50,6 +50,45 @@ def _door(vis, o, lw):
         cv2.polylines(vis, [np.array([_pt(q) for q in arc], np.int32).reshape(-1, 1, 2)], False, COL["door"], max(1, lw // 2))
 
 
+ZONE_COL = {"kitchen": (0, 140, 255), "dining": (0, 170, 60), "living": (210, 90, 0), "bedroom": (170, 60, 170),
+            "bath": (200, 170, 0), "laundry": (120, 120, 120)}
+
+
+def _dashed(vis, pts, col, lw, dash=14):
+    pts = [np.asarray(p, float) for p in pts]
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        L = float(np.linalg.norm(b - a))
+        for s in np.arange(0, L, 2 * dash):
+            p0 = a + (b - a) * (s / max(L, 1e-6))
+            p1 = a + (b - a) * (min(L, s + dash) / max(L, 1e-6))
+            cv2.line(vis, _pt(p0), _pt(p1), col, lw, cv2.LINE_AA)
+
+
+def _zones(vis, b, lw, fs):
+    """Functional zones: tinted area, dashed implied boundary, function and confidence; the typed
+    objects that support them as thin boxes."""
+    overlay = vis.copy()
+    for sp in b.get("spaces", []):
+        for z in sp.get("zones", []):
+            col = ZONE_COL.get(z["function"], (0, 0, 0))
+            cv2.fillPoly(overlay, [np.array(z["polygon"], np.int32).reshape(-1, 1, 2)], col)
+    cv2.addWeighted(overlay, 0.18, vis, 0.82, 0, dst=vis)
+    for o in b.get("objects", []):
+        f = max(o["functions"], key=o["functions"].get) if o["functions"] else ""
+        x0, y0, x1, y1 = o["bbox"]
+        cv2.rectangle(vis, (x0, y0), (x1, y1), ZONE_COL.get(f, (90, 90, 90)), max(1, lw // 2))
+        cv2.putText(vis, o["kind"], (x0 + 2, y0 + int(12 * fs) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.45 * fs,
+                    ZONE_COL.get(f, (90, 90, 90)), 1, cv2.LINE_AA)
+    for sp in b.get("spaces", []):
+        for z in sp.get("zones", []):
+            col = ZONE_COL.get(z["function"], (0, 0, 0))
+            _dashed(vis, z["polygon"], col, 2 * lw)
+            label = f"{z['function'].upper()} zone {z['confidence']:.2f}"
+            c = _pt(z["center"])
+            cv2.putText(vis, label, c, cv2.FONT_HERSHEY_SIMPLEX, 1.2 * fs, (255, 255, 255), 4 * lw, cv2.LINE_AA)
+            cv2.putText(vis, label, c, cv2.FONT_HERSHEY_SIMPLEX, 1.2 * fs, col, 2 * lw, cv2.LINE_AA)
+
+
 def render(image: np.ndarray, b: dict, reconstruction: dict | None = None) -> np.ndarray:
     vis = cv2.addWeighted(image, 0.4, np.full_like(image, 255), 0.6, 0)
     lw = max(1, int(round(max(image.shape[:2]) / 1100)))
@@ -75,10 +114,13 @@ def render(image: np.ndarray, b: dict, reconstruction: dict | None = None) -> np
         if e["kind"] != "wall" and e["a"] in centre and e["b"] in centre:
             cv2.line(vis, _pt(centre[e["a"]]), _pt(centre[e["b"]]), COL["graph"], 1, cv2.LINE_AA)
     fs = max(0.35, max(image.shape[:2]) / 2600)
+    _zones(vis, b, lw, fs)
     for s in b.get("spaces", []):
         c = _pt(s["center"])
         sid = s["id"].replace("space_", "S")
-        label = f"{sid} {' / '.join(s['names'])}" if s["names"] else sid
+        inferred = (s.get("function") or {}).get("function")
+        label = (f"{sid} {' / '.join(s['names'])}" if s["names"] else
+                 f"{sid} ({inferred}?)" if inferred else sid)
         col = COL["text"] if s["names"] else COL["unnamed"]
         cv2.putText(vis, label, c, cv2.FONT_HERSHEY_SIMPLEX, fs, (255, 255, 255), 3 * lw, cv2.LINE_AA)
         cv2.putText(vis, label, c, cv2.FONT_HERSHEY_SIMPLEX, fs, col, lw, cv2.LINE_AA)

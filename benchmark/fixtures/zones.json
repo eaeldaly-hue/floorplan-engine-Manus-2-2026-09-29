@@ -1,0 +1,14 @@
+{
+  "notes": "Functional-zone ground truth (pixel points in the rendered page / image, as engine.analyzer receives it). Each point must lie in a zone of that function. 'one_space' points must share one structural space (no wall between them). Labelled from the drawing only (2026-10-08): 3.pdf p5 is an electrical sheet with no room names; the kitchen (sink, dishwasher, range, refrigerator, counters + peninsula), dining (table, 6 chairs) and living (sofa, loveseat, coffee table) zones share one open space.",
+  "plans": {
+    "3.pdf:5": {
+      "zones": [
+        {"function": "kitchen", "point": [2367, 860]},
+        {"function": "dining", "point": [3100, 960]},
+        {"function": "living", "point": [3150, 1860]}
+      ],
+      "one_space": true,
+      "labels_on_page": false
+    }
+  }
+}

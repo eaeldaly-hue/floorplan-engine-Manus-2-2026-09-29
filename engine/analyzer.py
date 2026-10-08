@@ -1268,6 +1268,29 @@ def _topology(structure, openings: list[dict[str, Any]], rooms: list[dict[str, A
     }
 
 
+def _functional_zones(building, structure, cleaned, ocr_result, rooms, openings, scale, shape) -> None:
+    """Typed objects (engine.arch.objects) and functional zones (engine.arch.zones) in the
+    structured plan: one structural space can hold kitchen / dining / living zones."""
+    from .arch.objects import DOOR_CM, px_per_cm, vector_objects
+    from .arch.zones import infer_zones
+
+    vector = cleaned if (cleaned is not None and getattr(cleaned, "applicable", False)) else None
+    ppc, how = px_per_cm(vector, scale)
+    if ppc is None:
+        doors = [o["width_pixels"] for o in openings if o["type"] == "door" and o.get("width_pixels")]
+        if len(doors) >= 3:
+            ppc, how = float(np.median(doors)) / DOOR_CM, f"median of {len(doors)} door widths"
+    objects = vector_objects(vector, getattr(ocr_result, "boxes", ()) or (), ppc) if vector is not None and ppc else []
+    labels = [(r["name"], (r["label_center"]["x"], r["label_center"]["y"])) for r in rooms
+              if (r.get("label_center") or {}).get("x") is not None]
+    summary = infer_zones(building["spaces"], shape, objects, labels, ppc, structure.wall_mask)
+    summary["scale_source"] = how
+    building["objects"] = [o.to_dict() for o in objects]
+    building["zones_summary"] = summary
+    building["summary"]["objects"] = len(objects)
+    building["summary"]["zones"] = summary["zones"]
+
+
 ABBREVIATION_CONFIDENCE = 75.0
 
 
@@ -1567,6 +1590,7 @@ class FloorPlanAnalyzer:
         try:
             from .arch.building import build_building
             result["building"] = build_building(structure, spaces, rooms, unlabeled, openings, scale, plan_model)
+            _functional_zones(result["building"], structure, cleaned, ocr_result, rooms, openings, scale, image.shape)
             from .arch.building_view import render_png
             result["building_overlay_png"] = render_png(image, result["building"], reconstruction_report)
         except Exception as exc:                       # the structured plan never breaks the analysis
