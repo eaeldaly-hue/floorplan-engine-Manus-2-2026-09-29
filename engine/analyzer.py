@@ -1487,6 +1487,11 @@ class FloorPlanAnalyzer:
             "overlay_png": overlay_png,
             "openings_overlay_png": openings_overlay_png,
         }
+        try:
+            from .arch.building import build_building
+            result["building"] = build_building(structure, spaces, rooms, unlabeled, openings, scale, plan_model)
+        except Exception as exc:                       # the structured plan never breaks the analysis
+            warnings.append(f"Structured building model unavailable: {type(exc).__name__}")
         if plan_model is not None:
             result["plan_model"] = plan_model
         if cleaner is not None:
