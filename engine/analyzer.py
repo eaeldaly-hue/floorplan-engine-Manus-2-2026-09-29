@@ -1268,6 +1268,17 @@ def _topology(structure, openings: list[dict[str, Any]], rooms: list[dict[str, A
     }
 
 
+ABBREVIATION_CONFIDENCE = 75.0
+
+
+def _abbreviation_only(text: str) -> bool:
+    """The text is a room name only through the drafting-abbreviation lexicon (BA, BR, BED, KIT...)."""
+    if not room_lexicon.abbreviations_active():
+        return False
+    with room_lexicon.abbreviations(False):
+        return _room_name(text) is None
+
+
 def _line_source(group) -> str:
     """'pdf-text' when every word of the label comes from the document's own text."""
     boxes = getattr(group, "boxes", ())
@@ -1380,6 +1391,9 @@ class FloorPlanAnalyzer:
                 for group in room_groups:
                     if not _room_name(group.text):
                         continue
+                    if _abbreviation_only(group.text) and _line_source(group) != "pdf-text" \
+                            and group.confidence < ABBREVIATION_CONFIDENCE:
+                        continue    # a drafting tag (BA, BDRM...) read weakly by OCR is usually a symbol
 
                     room_lines.append(
                         OCRLine(

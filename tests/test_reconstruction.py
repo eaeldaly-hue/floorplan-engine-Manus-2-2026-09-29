@@ -130,3 +130,28 @@ def test_real_vector_pdf_default_path_uses_the_cleaned_reading_when_it_explains_
     assert r["reconstruction"]["chosen"] == "vector-cleaned"
     assert r["room_count"] >= 10 and r["door_count"] >= 10
     assert r["_clean_result"].applicable
+
+
+def test_abbreviation_only_names():
+    from engine.analysis import room_lexicon
+    from engine.analyzer import _abbreviation_only
+
+    with room_lexicon.abbreviations(True):
+        assert _abbreviation_only("BA") and _abbreviation_only("BDRM") and not _abbreviation_only("KITCHEN")
+    with room_lexicon.abbreviations(False):
+        assert not _abbreviation_only("BA")
+
+
+@pytest.mark.skipif(not (REAL / "3.pdf").exists(), reason="real test plans not available")
+def test_real_symbol_read_as_drafting_tag_does_not_name_a_room():
+    """3.pdf p5 (an electrical sheet without room names): OCR reads the stove's crossed circles as
+    'ba' (confidence 44); with drafting abbreviations active that named the open kitchen/living
+    space 'Bathroom'. Abbreviation-only tags need the PDF text layer or a confident read."""
+    from benchmark.holdout_inputs import load
+    from engine.analyzer import FloorPlanAnalyzer
+    from engine.cleaning.cleaner import clean
+
+    image, evidence, _ = load(REAL / "3.pdf", 5)
+    r = FloorPlanAnalyzer().analyze(image, "3.pdf", text_evidence=evidence or None,
+                                    cleaner_candidate=lambda: clean(image, REAL / "3.pdf", 5, evidence, mode="vector"))
+    assert "Bathroom" not in [room["name"] for room in r["rooms"]]
