@@ -75,3 +75,28 @@ def test_structural_job_runs_plan_model_off_the_ocr_path(monkeypatch):
     for key in ("room_count", "unlabeled_space_count", "opening_count"):
         assert parallel[key] == serial[key]
     assert parallel["plan_model"]["summary"] == serial["plan_model"]["summary"]
+
+
+@pytest.mark.skipif(O.pytesseract is None, reason="Tesseract not installed")
+def test_page_passes_are_upright_and_vertical_text_is_still_read(monkeypatch):
+    """Rotated text is read by the text-line reader (each vertical line turned upright), so the
+    full-page passes read upright only: 4 variants x 2 modes = 8 instead of 32."""
+    img = np.full((900, 700, 3), 255, np.uint8)
+    cv2.rectangle(img, (40, 40), (660, 860), (0, 0, 0), 8)
+    cv2.putText(img, "KITCHEN", (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.4, (0, 0, 0), 3)
+    side = np.full((70, 420, 3), 255, np.uint8)
+    cv2.putText(side, "BEDROOM", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.4, (0, 0, 0), 3)
+    img[300:720, 500:570] = cv2.rotate(side, cv2.ROTATE_90_COUNTERCLOCKWISE)     # vertical label
+    calls = []
+    real = O._read_words
+    monkeypatch.setattr(O, "_read_words", lambda im, **k: calls.append((k["variant_name"], k["rotation"])) or real(im, **k))
+    O.clear_ocr_memo()
+    texts = {b.text.upper() for b in O.extract_ocr(img).boxes}
+    page = [c for c in calls if c[0] != "text-lines"]
+    assert len(page) == 8 and {r for _, r in page} == {0}
+    assert "KITCHEN" in texts and "BEDROOM" in texts
+    calls.clear()
+    monkeypatch.setenv("FLOORPLAN_OCR_ROTATIONS", "all")
+    O.clear_ocr_memo()
+    O.extract_ocr(img)
+    assert len([c for c in calls if c[0] != "text-lines"]) == 32

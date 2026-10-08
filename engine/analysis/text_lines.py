@@ -213,3 +213,46 @@ def read_text_lines(gray: np.ndarray, lines: list[TextLine], read_words) -> list
             if hit:
                 out.append((text, *hit[:4], conf, hit[4]))
     return out
+
+
+def text_image(image: np.ndarray, lines_only: bool = False) -> np.ndarray:
+    """A text-optimised rendering of the page (experimental, see docs): the original pixels of
+    glyph-sized marks (letters, digits, fused words) on white; walls, long lines, large outlines
+    and filled areas are removed. lines_only: keep only marks inside detected text lines."""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+    H, W = gray.shape[:2]
+    keep = np.zeros((H, W), np.uint8)
+    max_h = max(12, int(0.05 * min(H, W)))
+    if lines_only:
+        for ln in find_text_lines(gray):
+            pad = max(1, int(round(0.3 * ln.glyph_h)))
+            keep[max(0, ln.y - pad):ln.y + ln.h + pad, max(0, ln.x - pad):ln.x + ln.w + pad] = 1
+    else:
+        for local in (False, True):
+            ink, _ = _components(gray, local)
+            n, lab, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
+            ok = np.zeros(n, bool)
+            for i in range(1, n):
+                x, y, w, h, area = stats[i]
+                for gw, gh in ((w, h), (h, w)):
+                    fill = area / float(w * h)
+                    if not (3 <= gh <= max_h) or area < 4 or (fill > 0.9 and gw > 0.6 * gh):
+                        continue
+                    if gw > 2.5 * gh and not (gw <= 14 * gh and 0.15 <= fill <= 0.75):
+                        continue
+                    ok[i] = True
+            keep |= ok[lab].astype(np.uint8)
+            # punctuation and marks next to text (feet / inch marks, dots, hyphens): small components
+            # inside the neighbourhood of kept glyphs
+            zone = cv2.dilate(keep, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
+            small = (stats[:, 2] <= max_h) & (stats[:, 3] <= max_h) & (stats[:, 4] >= 1)
+            small[0] = False
+            inside = np.zeros(n, bool)
+            ys, xs = np.nonzero(zone)
+            hit = np.unique(lab[ys, xs])
+            inside[hit] = True
+            keep |= (small & inside & ~ok)[lab].astype(np.uint8)
+        keep = cv2.dilate(keep, np.ones((3, 3), np.uint8))
+    out = np.full_like(image, 255)
+    out[keep > 0] = image[keep > 0]
+    return out

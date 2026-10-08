@@ -287,6 +287,11 @@ def text_lines_enabled() -> bool:
     return os.environ.get("FLOORPLAN_TEXT_LINES", "on").strip().lower() not in ("off", "0", "no", "false")
 
 
+def _all_rotations() -> bool:
+    import os
+    return os.environ.get("FLOORPLAN_OCR_ROTATIONS", "upright").strip().lower() == "all"
+
+
 def text_line_mosaics(image) -> list:
     import cv2
     from .text_lines import build_mosaics, find_text_lines
@@ -311,10 +316,15 @@ def extract_aggregated(image, *, min_confidence: float = 25.0, psms=(11, 6), max
     # The passes are independent reads: run them concurrently, then consume the results in the
     # fixed pass order (variant, rotation, psm), so the evidence is identical to reading them
     # one after another.
-    jobs = [(variant, rotation, psm) for variant in variants for rotation in range(4) for psm in psms]
+    # Full-page passes read upright text; rotated text is read by the text-line reader (vertical
+    # lines are turned upright individually). Measured on the test cases: 32 -> 8 page passes keeps
+    # 299 of 304 printed room names at 29% of the OCR CPU (docs/OCR_ARCHITECTURE.md).
+    line_reader = text_lines_enabled()
+    rotations = range(4) if (not line_reader or _all_rotations()) else (0,)
+    jobs = [(variant, rotation, psm) for variant in variants for rotation in rotations for psm in psms]
     # Scale-normalised text lines (engine.analysis.text_lines): every detected line read at its
     # own optimal glyph height, packed into mosaics; read in the same pool as the page passes.
-    mosaics = text_line_mosaics(image) if text_lines_enabled() else []
+    mosaics = text_line_mosaics(image) if line_reader else []
     line_jobs = [(m, psm) for m in range(len(mosaics)) for psm in psms]
 
     def read(job):
