@@ -1189,7 +1189,7 @@ def _infer_anonymous_dimensions(
     return kept + estimates, pixel_scale, len(estimates)
 
 
-def _draw_overlay(image: np.ndarray, rooms: list[dict[str, Any]], unlabeled: list[dict[str, Any]]) -> bytes:
+def _draw_overlay(image: np.ndarray, rooms: list[dict[str, Any]], unlabeled: list[dict[str, Any]], zones=()) -> bytes:
     base = image.copy()
     fills = base.copy()
     for room in rooms:
@@ -1227,6 +1227,14 @@ def _draw_overlay(image: np.ndarray, rooms: list[dict[str, Any]], unlabeled: lis
         cv2.rectangle(overlay, (badge_x - 4, badge_y - 16), (badge_x + 31, badge_y + 4), (255, 255, 255), -1)
         cv2.putText(overlay, f"U{index:02d}", (badge_x, badge_y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1, cv2.LINE_AA)
 
+    for zone in zones:                         # functional zones not drawn as a room: dashed, never a wall
+        if zone.get("room_ids"):
+            continue
+        from .arch.building_view import ZONE_COL, _dashed
+        color = ZONE_COL.get(zone["function"], (90, 90, 90))
+        _dashed(overlay, zone["polygon"], color, max(2, image.shape[1] // 900))
+        cx, cy = (int(v) for v in zone["center"])
+        cv2.putText(overlay, f"{zone['function']} zone", (cx, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, cv2.LINE_AA)
     ok, encoded = cv2.imencode(".png", overlay)
     if not ok:
         raise RuntimeError("Could not encode analysis overlay")
@@ -1268,19 +1276,38 @@ def _topology(structure, openings: list[dict[str, Any]], rooms: list[dict[str, A
     }
 
 
-def _functional_zones(building, structure, cleaned, ocr_result, rooms, openings, scale, shape) -> None:
+def _functional_zones(building, structure, cleaned, ocr_result, rooms, openings, scale, shape, work_scale=1.0) -> None:
     """Typed objects (engine.arch.objects) and functional zones (engine.arch.zones) in the
     structured plan: one structural space can hold kitchen / dining / living zones."""
-    from .arch.objects import DOOR_CM, px_per_cm, vector_objects
+    from .arch.objects import DOOR_CM, px_per_cm, vector_objects, within_walls
     from .arch.zones import infer_zones
 
-    vector = cleaned if (cleaned is not None and getattr(cleaned, "applicable", False)) else None
-    ppc, how = px_per_cm(vector, scale)
+    # The vector layer is in the page frame; the analysis may run on a rescaled reading (work_scale):
+    # the scale is kept in both frames (px per cm on the page, and in the analysed image).
+    vector = cleaned if getattr(cleaned, "layer", None) is not None else None
+    ppc, how = px_per_cm(None, scale)                      # printed dimensions: analysed frame
+    if ppc is None and vector is not None and vector.applicable:
+        page_ppc, how = px_per_cm(vector, None)            # the page's own doors: page frame
+        ppc = page_ppc * work_scale if page_ppc else None
     if ppc is None:
         doors = [o["width_pixels"] for o in openings if o["type"] == "door" and o.get("width_pixels")]
         if len(doors) >= 3:
             ppc, how = float(np.median(doors)) / DOOR_CM, f"median of {len(doors)} door widths"
-    objects = vector_objects(vector, getattr(ocr_result, "boxes", ()) or (), ppc) if vector is not None and ppc else []
+    objects = []
+    if vector is not None and ppc:
+        boxes = getattr(ocr_result, "boxes", ()) or ()
+        if work_scale != 1.0:
+            from types import SimpleNamespace
+            boxes = [SimpleNamespace(text=b.text, x=b.x / work_scale, y=b.y / work_scale, width=b.width / work_scale,
+                                     height=b.height / work_scale, confidence=getattr(b, "confidence", 60)) for b in boxes]
+        mask = structure.wall_mask
+        if mask is not None and mask.shape[:2] != vector.layer.shape[:2]:
+            mask = cv2.resize(mask, (vector.layer.shape[1], vector.layer.shape[0]), interpolation=cv2.INTER_NEAREST)
+        objects = vector_objects(vector, boxes, ppc / work_scale, wall_mask=mask,
+                                 wall_thickness=structure.wall_thickness / work_scale)
+        for o in objects:
+            o.bbox = tuple(v * work_scale for v in o.bbox)
+    objects = within_walls(objects, building)
     labels = [(r["name"], (r["label_center"]["x"], r["label_center"]["y"])) for r in rooms
               if (r.get("label_center") or {}).get("x") is not None]
     summary = infer_zones(building["spaces"], shape, objects, labels, ppc, structure.wall_mask)
@@ -1374,7 +1401,7 @@ class FloorPlanAnalyzer:
                     geom = cleaned.recognition_image
             st = analyze_structure(geom)
             prefer = geom is not image and structure_engine == "plan"
-            hyps, blocks, vector = None, [], None
+            hyps, blocks, vector, cand = None, [], None, None
             if geom is image:
                 # ambiguous plans get alternative readings (engine.reconstruction); easy ones run once
                 from . import reconstruction
@@ -1394,7 +1421,15 @@ class FloorPlanAnalyzer:
             # the Plan Model fallback is not needed when the page's own vectors give the reading
             pending = None if vector is not None else plan_adapter.prepare(
                 geom, st, evidence_image=image if prefer else None, prefer=prefer)
-            return cleaned, geom, st, pending, (hyps, blocks)
+            # Furniture and fixtures are read from the page's own vectors whichever wall reading
+            # wins (engine.arch.objects); the cleaned layer is computed here, alongside OCR.
+            layer = cleaned if cleaned is not None and cleaned.layer is not None else cand
+            if layer is None and cleaner_candidate is not None:
+                try:
+                    layer = cleaner_candidate()
+                except Exception:
+                    layer = None
+            return cleaned, geom, st, pending, (hyps, blocks, layer)
 
         background = ThreadPoolExecutor(max_workers=1, thread_name_prefix="floorplan-structure") \
             if ocr_workers() > 1 else None
@@ -1451,11 +1486,11 @@ class FloorPlanAnalyzer:
         # One structural pass: walls, wall gaps, sealed spaces and their topology.
         if structure_job is not None:
             try:
-                cleaned, geometry, structure, pending_plan, (hyps, blocks) = structure_job.result()
+                cleaned, geometry, structure, pending_plan, (hyps, blocks, object_layer) = structure_job.result()
             finally:
                 background.shutdown(wait=True)
         else:
-            cleaned, geometry, structure, pending_plan, (hyps, blocks) = structural()
+            cleaned, geometry, structure, pending_plan, (hyps, blocks, object_layer) = structural()
         work_scale, reconstruction_report = 1.0, None
         plan_model, plan_notes = None, []
         if hyps and len(hyps) > 1:
@@ -1567,7 +1602,6 @@ class FloorPlanAnalyzer:
         if not openings:
             warnings.append("No likely door/window wall gaps were detected; inspect image clarity and wall continuity.")
 
-        overlay_png = _draw_overlay(image, rooms, unlabeled)
         openings_overlay_png = draw_openings_overlay(image, openings)
         result = {
             "source_name": source_name,
@@ -1584,21 +1618,26 @@ class FloorPlanAnalyzer:
             "unclassified_opening_count": opening_counts["opening"],
             "topology": _topology(structure, openings, rooms),
             "warnings": warnings,
-            "overlay_png": overlay_png,
             "openings_overlay_png": openings_overlay_png,
         }
         try:
             from .arch.building import build_building
             result["building"] = build_building(structure, spaces, rooms, unlabeled, openings, scale, plan_model)
-            _functional_zones(result["building"], structure, cleaned, ocr_result, rooms, openings, scale, image.shape)
+            _functional_zones(result["building"], structure, cleaned if cleaned is not None else object_layer,
+                              ocr_result, rooms, openings, scale, image.shape, work_scale)
+            from .arch.projection import project
+            project(result)                              # zones / objects into the flat records
             from .arch.building_view import render_png
             result["building_overlay_png"] = render_png(image, result["building"], reconstruction_report)
         except Exception as exc:                       # the structured plan never breaks the analysis
             warnings.append(f"Structured building model unavailable: {type(exc).__name__}")
+        result["overlay_png"] = _draw_overlay(image, rooms, unlabeled, result.get("zones", ()))
         if plan_model is not None:
             result["plan_model"] = plan_model
         if cleaner is not None or (cleaned is not None and cleaner_candidate is not None):
             result["_clean_result"] = cleaned
+        elif object_layer is not None and getattr(object_layer, "layer", None) is not None:
+            result["_object_layer"] = object_layer       # read for furniture only (Elements view)
         if reconstruction_report is not None:
             result["reconstruction"] = reconstruction_report
         if work_scale != 1.0:

@@ -142,6 +142,14 @@ def create_app(test_config: dict | None = None) -> Flask:
             result["cleaning"] = cleaned.representation() | {
                 "mode_used": "cleaned" if cleaned.applicable else "original",
                 "urls": {name.split(".")[0]: f"/api/results/{result_id}/cleaning/{name}" for name in files}}
+        layer = result.pop("_object_layer", None)
+        if cleaned is None and layer is not None:
+            # the page's vectors were read for furniture only: the Elements view, not a cleaned plan
+            from engine.cleaning.cleaner import save_artifacts
+            files = save_artifacts(result_dir / "cleaning", image, layer)
+            if "elements.png" in files:
+                result["elements"] = {"url": f"/api/results/{result_id}/cleaning/elements.png",
+                                      "note": "the page's vector elements, read for furniture and fixtures"}
         (result_dir / "openings-overlay.png").write_bytes(result.pop("openings_overlay_png"))
         result["warnings"] = load_warnings + result["warnings"]
         result["result_id"] = result_id

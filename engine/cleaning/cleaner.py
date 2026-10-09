@@ -179,12 +179,16 @@ def clean(image: np.ndarray, pdf_path=None, page: int | None = None, text_boxes=
         if layer.applicable:
             return _from_layer(layer, "vector-wall-pen" if layer.wall_pens else "vector-poche", t0)
         reasons.append(f"vector: {layer.reason}")
+        untyped = layer if layer.elements else None      # the page's vectors, walls not typed
     if mode == "raster":
         res = _from_raster(image, t0)
         if res.applicable:
             return res
         reasons.append(res.reason)
-    return CleanResult(source="none", reason="; ".join(reasons) or "no source", seconds=time.perf_counter() - t0)
+    res = CleanResult(source="none", reason="; ".join(reasons) or "no source", seconds=time.perf_counter() - t0)
+    if pdf_path is not None and page:
+        res.layer = untyped                              # still read for furniture (engine.arch.objects)
+    return res
 
 
 # ---------------------------------------------------------------------------
@@ -222,7 +226,7 @@ def save_artifacts(directory, original: np.ndarray, result: CleanResult, recogni
     d.mkdir(parents=True, exist_ok=True)
     files = {}
     images = {"cleaned.png": result.skeleton_image, "recognition-input.png": result.recognition_image,
-              "elements.png": result.elements_image(original) if result.applicable else None,
+              "elements.png": result.elements_image(original) if result.applicable or result.layer is not None else None,
               "comparison.png": comparison_sheet(original, result, recognized) if result.applicable else None}
     for name, im in images.items():
         if im is not None:

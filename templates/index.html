@@ -99,7 +99,7 @@
             <button type="button" data-view="openings" disabled>Openings</button>
             <button type="button" data-view="combined" disabled>Combined</button>
             <button type="button" data-view="cleaned" disabled title="The cleaned architectural plan the recognition ran on (enable 'Clean plan first')">Cleaned</button>
-            <button type="button" data-view="elements" disabled title="Every element of the drawing by type: kept (walls, doors, windows) and suppressed">Elements</button>
+            <button type="button" data-view="elements" disabled title="Every element of the drawing by type: kept (walls, doors, windows) and suppressed; furniture, fixtures and appliances recognised from the suppressed ink are boxed">Elements</button>
             <button type="button" data-view="building" disabled
               title="The structured plan: building outline, exterior / interior walls, doors with their swing, windows, passages, space ids and how the spaces connect">Building</button>
           </div>
@@ -130,6 +130,8 @@
             <span class="layer-bar-label">Layers</span>
             <label><input type="checkbox" data-layer="rooms" checked><i class="swatch swatch-room"></i>Rooms</label>
             <label><input type="checkbox" data-layer="unlabeled" checked><i class="swatch swatch-space"></i>Unlabeled spaces</label>
+            <label><input type="checkbox" data-layer="zones" checked><i class="swatch swatch-zone"></i>Functional zones</label>
+            <label><input type="checkbox" data-layer="objects" checked><i class="swatch swatch-object"></i>Objects</label>
             <label><input type="checkbox" data-layer="door" checked><i class="swatch swatch-door"></i>Doors</label>
             <label><input type="checkbox" data-layer="window" checked><i class="swatch swatch-window"></i>Windows</label>
             <label><input type="checkbox" data-layer="opening" checked><i class="swatch swatch-opening"></i>Unclassified</label>
@@ -146,7 +148,9 @@
           <div class="page-tabs" id="page-tabs" hidden role="tablist" aria-label="Analysed PDF pages"></div>
           <nav class="results-nav" id="results-nav" hidden aria-label="Jump to section">
             <button type="button" class="nav-chip" data-target="rooms-section">Rooms <span id="nav-rooms-count"></span></button>
+            <button type="button" class="nav-chip" data-target="zones-section" id="nav-zones" hidden>Zones <span id="nav-zones-count"></span></button>
             <button type="button" class="nav-chip" data-target="openings-section">Openings <span id="nav-openings-count"></span></button>
+            <button type="button" class="nav-chip" data-target="objects-section" id="nav-objects" hidden>Objects <span id="nav-objects-count"></span></button>
           </nav>
         </div>
 
@@ -185,6 +189,18 @@
               </div>
             </section>
 
+            <section class="panel-section table-card" id="zones-section" aria-labelledby="zones-title" hidden>
+              <div class="section-head">
+                <h3 id="zones-title">Functional zones</h3>
+                <span class="count" id="zones-count"></span>
+                <span class="card-hint">Inferred parts of a structural space, not walled rooms</span>
+              </div>
+              <table class="data-table" id="zones-table">
+                <thead><tr><th>ID</th><th>Function · evidence</th><th class="num">Area</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </section>
+
             <section class="panel-section table-card" id="openings-section" aria-labelledby="openings-title">
               <div class="section-head">
                 <h3 id="openings-title">Openings</h3>
@@ -195,6 +211,18 @@
                 <tbody></tbody>
               </table>
               <p class="empty-note" id="openings-empty" hidden>The engine reported no openings for this plan.</p>
+            </section>
+
+            <section class="panel-section table-card" id="objects-section" aria-labelledby="objects-title" hidden>
+              <div class="section-head">
+                <h3 id="objects-title">Objects</h3>
+                <span class="count" id="objects-count"></span>
+                <span class="card-hint">Furniture, fixtures and appliances (Elements view)</span>
+              </div>
+              <table class="data-table" id="objects-table">
+                <thead><tr><th>ID</th><th>Object · evidence</th><th class="num">Where</th></tr></thead>
+                <tbody></tbody>
+              </table>
             </section>
 
             <section class="panel-section raw-card">

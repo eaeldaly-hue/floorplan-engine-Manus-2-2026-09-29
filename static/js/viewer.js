@@ -13,7 +13,7 @@ const VIEW_TITLES = {
   openings: ['Openings', 'detected openings over the original'],
   combined: ['Combined', 'all detections over the original'],
   cleaned: ['Cleaned plan', 'architectural skeleton the recognition ran on, with the recognised rooms'],
-  elements: ['Elements', 'kept: walls black · doors green · windows orange · suppressed: grey'],
+  elements: ['Elements', 'kept: walls black · doors green · windows orange · suppressed: grey · typed objects boxed'],
   building: ['Building', 'walls exterior red · interior blue · doors magenta with swing · windows orange · spaces and links'],
 };
 const CLEANING_VIEWS = { cleaned: 'cleaned', elements: 'elements' };
@@ -24,6 +24,15 @@ const FALLBACK_SUBTITLES = {
 };
 
 const OPENING_TYPES = { door: 'Door', window: 'Window', opening: 'Unclassified' };
+
+// Functional zones and the typed objects that support them share one colour per function.
+export const FUNCTION_COLORS = {
+  kitchen: '#e07b00', dining: '#2f9e44', living: '#1f6fd1', bedroom: '#a8399a', bath: '#00a3b4', laundry: '#6b6b6b',
+};
+export const functionOf = (functions) => {
+  const entries = Object.entries(functions || {});
+  return entries.length ? entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0] : null;
+};
 
 // Why a cleaning view is (not) available: no result yet, analysed without cleaning, or cleaning not
 // applicable to this drawing (the server's reason).
@@ -79,6 +88,29 @@ export function indexGeometry(data) {
       estimate: space.boundary.method === 'dimension-only-estimate',
       label: space.id,
       tag: space.id,
+    });
+  }
+  // Functional zones of a structural space that no room record already draws (a labelled
+  // open-plan room takes its zone's extent, so it is drawn once, as the room).
+  for (const zone of data.zones || []) {
+    if (!zone.polygon?.length || zone.room_ids?.length) continue;
+    entries.set(`zone:${zone.id}`, {
+      kind: 'zone',
+      fn: zone.function,
+      points: zone.polygon,
+      anchor: zone.center,
+      label: `${zone.function} zone · ${Math.round(zone.confidence * 100)}%`,
+      tag: zone.id,
+    });
+  }
+  for (const obj of data.objects || []) {
+    const [x0, y0, x1, y1] = obj.bbox;
+    entries.set(`object:${obj.id}`, {
+      kind: 'object',
+      fn: functionOf(obj.functions),
+      points: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]],
+      label: obj.kind,
+      tag: obj.id,
     });
   }
   for (const opening of data.openings || []) {
@@ -142,7 +174,7 @@ export class Viewer {
     this.view = 'rooms';
     this.mode = 'original';
     this.zoom = 1;
-    this.layers = { rooms: true, unlabeled: true, door: true, window: true, opening: true, labels: true };
+    this.layers = { rooms: true, unlabeled: true, zones: true, objects: true, door: true, window: true, opening: true, labels: true };
     this.highlightKey = null;
     this.panes = [];
     this.bindControls();
@@ -252,7 +284,8 @@ export class Viewer {
     // Base layer: always the original when the browser can show it (the cleaning views show the
     // cleaned plan / typed elements produced by the server instead).
     let src = null;
-    const cleaningUrl = CLEANING_VIEWS[kind] && this.result?.cleaning?.urls?.[CLEANING_VIEWS[kind]];
+    const cleaningUrl = CLEANING_VIEWS[kind] && (this.result?.cleaning?.urls?.[CLEANING_VIEWS[kind]]
+      || (kind === 'elements' ? this.result?.elements?.url : null));
     if (cleaningUrl) src = cleaningUrl;
     else if (kind === 'building') src = this.result?.building_overlay_url || null;
     else if (previewOk) src = this.preview.url;
@@ -278,8 +311,12 @@ export class Viewer {
       if (kind === 'cleaned') {
         this.drawGeometry(svgRoot, width, height, 'rooms');
         drawn = true;
-      } else if (kind === 'elements' || kind === 'building') {
-        // the server image is the content (typed elements / the structured plan): nothing drawn over it
+      } else if (kind === 'elements') {
+        // the typed elements image, with the objects recognised from its non-architectural ink
+        this.drawGeometry(svgRoot, width, height, 'elements');
+        drawn = true;
+      } else if (kind === 'building') {
+        // the server image is the content (the structured plan): nothing drawn over it
       } else if ((kind !== 'original' && previewOk) || (kind === 'combined' && !previewOk)) {
         this.drawGeometry(svgRoot, width, height, kind);
         drawn = true;
@@ -297,12 +334,15 @@ export class Viewer {
   drawGeometry(root, width, height, kind) {
     const size = Math.max(width, height);
     const fontSize = size / 95;
-    const showRooms = kind !== 'openings';
-    const showOpenings = kind !== 'rooms';
+    const showRooms = kind !== 'openings' && kind !== 'elements';
+    const showOpenings = kind !== 'rooms' && kind !== 'elements';
+    const showObjects = kind === 'elements';
     const groups = {
       physical: svg('g', { 'data-layer': 'rooms' }),
       rooms: svg('g', { 'data-layer': 'rooms' }),
       unlabeled: svg('g', { 'data-layer': 'unlabeled' }),
+      zones: svg('g', { 'data-layer': 'zones' }),
+      objects: svg('g', { 'data-layer': 'objects' }),
       door: svg('g', { 'data-layer': 'door' }),
       window: svg('g', { 'data-layer': 'window' }),
       opening: svg('g', { 'data-layer': 'opening' }),
@@ -332,6 +372,25 @@ export class Viewer {
         const box = bounds(item.points);
         groups.labels.append(tag(box.x0 + fontSize * 0.45, box.y0 + fontSize * 1.15, item.tag,
           { 'data-key': key, 'font-size': fontSize * 0.85 }));
+      } else if (item.kind === 'zone' && showRooms) {
+        const color = FUNCTION_COLORS[item.fn] || '#555';
+        const polygon = svg('polygon', { class: 'geo geo-zone', points: pointsAttr(item.points), style: `--fn:${color}`, ...interactive(key) });
+        polygon.append(svg('title', { text: `${item.tag} · ${item.label} · inferred, not walled` }));
+        groups.zones.append(polygon);
+        const [cx, cy] = item.anchor;
+        groups.labels.append(tag(cx, cy, item.label.toUpperCase(), {
+          class: 'geo-label geo-zone-label', style: `--fn:${color}`, 'font-size': fontSize * 1.1,
+          'text-anchor': 'middle', 'data-key': key,
+        }));
+      } else if (item.kind === 'object' && showObjects) {
+        const color = FUNCTION_COLORS[item.fn] || '#666';
+        const rect = svg('polygon', { class: 'geo geo-object', points: pointsAttr(item.points), style: `--fn:${color}`, ...interactive(key) });
+        rect.append(svg('title', { text: `${item.tag} · ${item.label}` }));
+        groups.objects.append(rect);
+        const box = bounds(item.points);
+        groups.labels.append(tag(box.x0 + fontSize * 0.2, box.y0 - fontSize * 0.3, item.label, {
+          class: 'geo-label geo-object-label', style: `--fn:${color}`, 'font-size': fontSize * 0.7, 'data-key': key,
+        }));
       } else if (item.kind === 'opening' && showOpenings) {
         const group = groups[item.type] || groups.opening;
         const band = openingBand(item, size);
@@ -347,7 +406,7 @@ export class Viewer {
         }));
       }
     }
-    root.append(groups.physical, groups.rooms, groups.unlabeled, groups.door, groups.window, groups.opening, groups.labels);
+    root.append(groups.physical, groups.rooms, groups.unlabeled, groups.zones, groups.objects, groups.door, groups.window, groups.opening, groups.labels);
   }
 
   applyLayerVisibility() {
@@ -435,7 +494,8 @@ export class Viewer {
     for (const button of this.els.viewTabs.querySelectorAll('button[data-view]')) {
       const view = button.dataset.view;
       const available = hasResult
-        && (!CLEANING_VIEWS[view] || Boolean(this.result?.cleaning?.urls?.[CLEANING_VIEWS[view]]))
+        && (!CLEANING_VIEWS[view] || Boolean(this.result?.cleaning?.urls?.[CLEANING_VIEWS[view]])
+          || (view === 'elements' && Boolean(this.result?.elements?.url)))
         && (view !== 'building' || Boolean(this.result?.building_overlay_url));
       if (CLEANING_VIEWS[view]) {
         button.dataset.help ||= button.title;
@@ -487,8 +547,11 @@ export class Viewer {
     // When the layer toggles are shown they already act as the colour key; the
     // legend then only adds what they do not cover (dimension-estimate rooms).
     const showsRooms = analysis.kind !== 'openings' && analysis.kind !== 'elements' && analysis.kind !== 'building';
+    const zoneItems = () => Object.entries(FUNCTION_COLORS)
+      .filter(([fn]) => (this.result?.zones || []).some((z) => z.function === fn))
+      .map(([fn, color]) => el('span', { class: 'legend-item' }, el('i', { class: 'swatch swatch-zone', style: `--fn:${color}` }), `${fn} zone`));
     const items = analysis.drawn
-      ? (showsRooms ? [item('swatch-estimate', 'Room · dimension estimate')] : [])
+      ? (showsRooms ? [item('swatch-estimate', 'Room · dimension estimate'), ...zoneItems()] : [])
       : analysis.kind === 'rooms' ? roomItems()
         : analysis.kind === 'openings' ? openingItems()
           : [...roomItems(), ...openingItems()];

@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 
 LINEAR = {"x", "y", "width", "height", "start", "end", "center", "p0", "p1", "polygon", "width_pixels", "width_px",
-          "thickness_px", "wall_thickness_px", "pixels_per_unit"}
+          "thickness_px", "wall_thickness_px", "pixels_per_unit", "px_per_cm", "scale_px_per_cm"}
 AREA = {"area_pixels", "area_px"}
 KEEP = {"dimensions", "summary", "image", "graph", "envelope", "plan_model", "reconstruction", "scale", "cleaning"}
 
@@ -44,6 +44,8 @@ def _walk(v, f: float):
             out[key] = _num(x, f * f)
         elif key == "area" and isinstance(x, dict) and str(x.get("unit", "")).startswith("px"):
             out[key] = {**x, "value": _num(x.get("value"), f * f)}
+        elif key == "bbox" and isinstance(x, list):
+            out[key] = _all(x, f)
         elif key in LINEAR:
             out[key] = _all(x, f) if isinstance(x, (list, tuple, dict)) else _num(x, f)
         else:
@@ -68,7 +70,7 @@ def to_original(result: dict, f: float, width: int, height: int) -> dict:
     for key in ("overlay_png", "openings_overlay_png", "building_overlay_png"):
         if isinstance(result.get(key), (bytes, bytearray)):
             out[key] = _png(result[key], (width, height))
-    for key in ("_clean_result",):
+    for key in ("_clean_result", "_object_layer"):
         if key in result:
             out[key] = result[key]
     return out

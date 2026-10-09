@@ -168,6 +168,8 @@ WORDS = [
     (r"PANTRY", "pantry", {"kitchen": 0.6}),
     (r"WASHER|\bW/D\b|\bWD\b", "washer", {"laundry": 0.8, "kitchen": 0.2}),
     (r"DRYER", "dryer", {"laundry": 1.0}),
+    (r"SHOWER", "shower", {"bath": 1.0}),
+    (r"\bTUB\b|BATHTUB", "bathtub", {"bath": 1.0}),
     (r"\bTV\b|MEDIA", "media", {"living": 0.8}),
 ]
 
@@ -233,23 +235,41 @@ def _classify_component(w: float, h: float, loops: list, near_wall: bool, curved
     return None
 
 
-def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None) -> list[Obj]:
-    """Typed objects from the cleaner's non-architectural vector elements (+ words)."""
+def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None, wall_mask: np.ndarray | None = None,
+                   wall_thickness: float | None = None) -> list[Obj]:
+    """Typed objects from the cleaner's non-architectural vector elements (+ words). When the
+    cleaner could not type the page's walls (its layer has no WALL element), the walls come from
+    `wall_mask` (the structural analysis, page frame) and the vectors lying on it are walls."""
     layer = getattr(cleaned, "layer", None)
     if layer is None or not ppc:
         return []
     h, w = layer.shape[:2]
-    t = float(layer.wall_thickness or 10.0)
+    typed = any(e.type == "WALL" for e in layer.elements)
+    if not typed and (wall_mask is None or wall_mask.shape[:2] != (h, w)):
+        return []
+    t = float(layer.wall_thickness or wall_thickness or 10.0)
     others = [e for e in layer.elements if e.type == "OTHER" and not e.fill]
     arch = np.zeros((h, w), np.uint8)
     ink = np.zeros((h, w), np.uint8)
+    if not typed:
+        on_wall = cv2.dilate((wall_mask > 0).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+        arch = cv2.morphologyEx((wall_mask > 0).astype(np.uint8) * 255, cv2.MORPH_GRADIENT, np.ones((3, 3), np.uint8))
+
+        def walled(e):
+            g = np.asarray(e.geometry, float)
+            pts = np.linspace(g[0], g[-1], 6) if len(g) == 2 else g
+            hits = [on_wall[min(h - 1, max(0, int(y))), min(w - 1, max(0, int(x)))] for x, y in pts]
+            return np.mean(hits) >= 0.8
+        others = [e for e in others if len(e.geometry) and not walled(e)]
     for e in layer.elements:
         pts = np.round(np.asarray(e.geometry, float)).astype(np.int32).reshape(-1, 1, 2)
         if len(pts) == 0:
             continue
         if e.type in ("WALL", "DOOR", "WINDOW", "COLUMN"):
             cv2.polylines(arch, [pts], False, 255, 2)
-        elif e.type == "OTHER" and not e.fill:
+    for e in others:
+        pts = np.round(np.asarray(e.geometry, float)).astype(np.int32).reshape(-1, 1, 2)
+        if len(pts):
             cv2.polylines(ink, [pts], False, 255, 2)
     k = max(3, int(round(t)) | 1)
     near_arch = cv2.dilate(arch, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))) > 0
@@ -274,19 +294,24 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None) -> list[Obj]
     for i, (cx, cy, r, _) in enumerate(burners):
         if i in used:
             continue
-        grp = [j for j, (x, y, rr, _) in enumerate(burners) if j not in used and abs(x - cx) <= 90 * ppc
-               and abs(y - cy) <= 90 * ppc and 0.75 <= rr / r <= 1.33]
+        grp = [j for j, (x, y, rr, _) in enumerate(burners) if j not in used and abs(x - cx) <= 60 * ppc
+               and abs(y - cy) <= 60 * ppc and 0.75 <= rr / r <= 1.33]
         pts = np.array([burners[j][:2] for j in grp])
         if not 4 <= len(grp) <= 6:
             continue
         xs, ys = pts[:, 0], pts[:, 1]
         cols = len(np.unique(np.round(xs / (12 * ppc))))
         rows = len(np.unique(np.round(ys / (12 * ppc))))
-        if cols >= 2 and rows >= 2 and (xs.max() - xs.min()) <= 80 * ppc and (ys.max() - ys.min()) <= 80 * ppc:
+        if cols >= 2 and rows >= 2 and (xs.max() - xs.min()) <= 60 * ppc and (ys.max() - ys.min()) <= 60 * ppc:
             used.update(grp)
             pad = 15 * ppc
             add("range", (xs.min() - pad, ys.min() - pad, xs.max() + pad, ys.max() + pad), {"kitchen": 1.0}, 0.9,
                 f"{len(grp)} burners in a {cols}x{rows} grid")
+    # a rounded rectangle is a basin only with its drain (a small circle inside): pillows, appliance
+    # fronts and shelf ends are rounded rectangles too
+    drains = circles(al, ppc, r_cm=(0.8, 6.0))
+    bs = [b for b in bs if any(b[0] < c[0] < b[2] and b[1] < c[1] < b[3] for c in drains)
+          and min(b[2] - b[0], b[3] - b[1]) >= 22 * ppc]
     merged = []
     for b in sorted(bs):
         if merged and b[0] - merged[-1][2] <= 15 * ppc and abs(b[1] - merged[-1][1]) <= 20 * ppc:
@@ -318,6 +343,11 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None) -> list[Obj]
                         x1 + pad if x1 - x0 < y1 - y0 else x1, y1 + pad if y1 - y0 <= x1 - x0 else y1),
             {"kitchen": 0.4}, 0.5, f"{np.linalg.norm(g[1] - g[0]) / ppc:.0f} cm line parallel to a wall at counter depth")
 
+    # --- showers: the standard symbol, two diagonals crossing a rectangle ----------------------------
+    segs = _segments(others)
+    for box in _crossed_boxes(segs, ppc):
+        add("shower", box, {"bath": 1.0}, 0.75, f"{(box[2] - box[0]) / ppc:.0f}x{(box[3] - box[1]) / ppc:.0f} cm crossed rectangle")
+
     # --- furniture from components ------------------------------------------------------------------
     n, lab, st, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     assemblies = []
@@ -332,7 +362,16 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None) -> list[Obj]
         edge = np.concatenate([wall_dist[y, x:x + bw], wall_dist[y + bh - 1, x:x + bw], wall_dist[y:y + bh, x], wall_dist[y:y + bh, x + bw - 1]])
         near_wall = bool(edge.size and edge.min() <= 1.5 * t + 6 * ppc)
         curved = sum(1 for ax, ay, ar, *_ in al if 8 * ppc <= ar <= 25 * ppc and x <= ax <= x + bw and y <= ay <= y + bh)
-        c = _classify_component(wc, hc, loops, near_wall, curved)
+        c = _bath_fixture(comp, (x, y, bw, bh), wall_dist, t, ppc) if near_wall else None
+        c = c or _oval_basin(comp, (x, y), drains, ppc)
+        c = c or _classify_component(wc, hc, loops, near_wall, curved)
+        if c and c[0] == "media / cabinet" and _hanger_strokes(segs, (x, y, x + bw, y + bh)) >= 6:
+            # many cross strokes: hangers on a rod when the box is closet-deep, else the ticks of a
+            # dimension string or a hatch, not furniture
+            c = ("wardrobe", {"bedroom": 0.4}, 0.6, f"{max(wc, hc):.0f}x{min(wc, hc):.0f} cm, rod with hangers") \
+                if min(wc, hc) >= 45 else None
+            if c is None:
+                continue
         if c:
             add(c[0], (x, y, x + bw, y + bh), c[1], c[2], c[3])
         else:
@@ -342,10 +381,12 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None) -> list[Obj]
                     {"living": 1.0 if n_seats >= 3 else 0.8}, 0.75, f"{n_seats} cushions side by side in a furniture group")
             if max(wc, hc) >= 120:
                 assemblies.append(((x, y, x + bw, y + bh), wc, hc))
+                for kind, (lx0, ly0, lx1, ly1), fn, why in _group_pieces(loops, circ, (x, y)):
+                    add(kind, (x + lx0, y + ly0, x + lx1, y + ly1), fn, 0.6, why)
         if not c and 60 <= max(wc, hc) <= 260 and 60 <= min(wc, hc) <= 140 and len(loops) <= 2 and not near_wall:
             tables.append((x, y, x + bw, y + bh))
         # bar stools / dining chairs drawn as separate small squares are counted by the zone layer
-        elif 30 <= max(wc, hc) <= 60 and 25 <= min(wc, hc) <= 60:
+        elif not c and 30 <= max(wc, hc) <= 60 and 25 <= min(wc, hc) <= 60:
             add("seat", (x, y, x + bw, y + bh), {"dining": 0.15, "kitchen": 0.1}, 0.3, f"{wc:.0f}x{hc:.0f} cm")
 
     # --- words: label the object they sit on (or a fixture-sized box around them) -------------------
@@ -358,9 +399,14 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None) -> list[Obj]
                 add(kind, (cx - half, cy - half, cx + half, cy + half), functions,
                     0.6 + 0.3 * min(1.0, float(getattr(b, "confidence", 60)) / 100), f"word '{b.text}'")
                 break
+    _tags(objs, ocr_boxes)
     _dining_from_pieces(objs, tables, ppc, add)
     _laundry(objs, ppc)
     _context(objs, ppc)
+    _beds(objs, ppc)
+    _seating(objs, ppc)
+    _lone_seats(objs, ppc)
+    _dedupe(objs)
     # a large drawn assembly holding several kitchen fixtures is the counter run / island
     strong = [o for o in objs if o.kind in STRONG_KITCHEN or (o.kind == "sink" and o.functions.get("kitchen", 0) >= 0.9)]
     for (x0, y0, x1, y1), wc, hc in assemblies:
@@ -447,7 +493,251 @@ def _context(objs: list[Obj], ppc: float) -> None:
         if o.kind == "sink" and near_k:
             o.functions = {"kitchen": 0.9}
             o.evidence.append(f"next to {len(near_k)} kitchen fixture(s)")
+        if o.kind == "washbasin" and near_k and not any(
+                b.kind in ("toilet", "shower", "bathtub") and math.dist(b.center, o.center) <= 250 * ppc for b in objs):
+            o.kind, o.functions = "sink", {"kitchen": 0.9}           # a bowl in the kitchen counter
+            o.evidence.append(f"among {len(near_k)} kitchen fixture(s), no toilet / shower near: a kitchen sink")
+        if o.kind == "sink" and not near_k and any(
+                b.kind in ("toilet", "shower", "bathtub") and math.dist(b.center, o.center) <= 250 * ppc for b in objs):
+            o.kind, o.functions = "washbasin", {"bath": 0.6}
+            o.evidence.append("beside a toilet / shower / tub")
+        elif o.kind == "sink" and not near_k and any("oval bowl" in e for e in o.evidence):
+            o.kind, o.functions = "washbasin", {"bath": 0.5}
+            o.evidence.append("a single oval bowl away from kitchen fixtures")
         if o.kind == "washer" and (any(k.kind == "range" and math.dist(k.center, o.center) <= 300 * ppc for k in near_k)
                                    or any(s.kind == "sink" and math.dist(s.center, o.center) <= 200 * ppc for s in objs)):
             o.kind, o.functions = "dishwasher", {"kitchen": 1.0}
             o.evidence.append("among kitchen fixtures: a dishwasher")
+
+
+# ------------------------------------------------------------------------------ geometric helpers
+def _segments(elements) -> np.ndarray:
+    """Straight two-point elements as rows (x0, y0, x1, y1, length, angle 0-180)."""
+    rows = []
+    for e in elements:
+        g = np.asarray(e.geometry, float)
+        if len(g) == 2:
+            (x0, y0), (x1, y1) = g
+            rows.append((x0, y0, x1, y1, math.hypot(x1 - x0, y1 - y0), math.degrees(math.atan2(y1 - y0, x1 - x0)) % 180))
+    return np.asarray(rows, float).reshape(-1, 6)
+
+
+def _crossed_boxes(segs: np.ndarray, ppc: float) -> list:
+    """Rectangles 70-230 cm crossed corner to corner by two diagonals (shower / tub symbol)."""
+    diag = segs[(segs[:, 4] >= 70 * ppc) & (((segs[:, 5] > 15) & (segs[:, 5] < 75)) | ((segs[:, 5] > 105) & (segs[:, 5] < 165)))]
+    tol = 6 * ppc
+    out = []
+    for i in range(len(diag)):
+        a = diag[i]
+        ba = (min(a[0], a[2]), min(a[1], a[3]), max(a[0], a[2]), max(a[1], a[3]))
+        for j in range(i + 1, len(diag)):
+            b = diag[j]
+            if (a[5] < 90) == (b[5] < 90):
+                continue                                   # same slope: not a cross
+            bb = (min(b[0], b[2]), min(b[1], b[3]), max(b[0], b[2]), max(b[1], b[3]))
+            if all(abs(u - v) <= tol for u, v in zip(ba, bb)):
+                w, h = (ba[2] - ba[0]) / ppc, (ba[3] - ba[1]) / ppc
+                if 70 <= max(w, h) <= 230 and 60 <= min(w, h) <= 160 and not any(
+                        abs(ba[0] - o[0]) <= tol and abs(ba[1] - o[1]) <= tol for o in out):
+                    out.append(ba)
+    return out
+
+
+def _hanger_strokes(segs: np.ndarray, box) -> int:
+    """Short strokes across the long axis of a wardrobe box (hangers on a rod)."""
+    x0, y0, x1, y1 = box
+    if not len(segs):
+        return 0
+    mx, my = (segs[:, 0] + segs[:, 2]) / 2, (segs[:, 1] + segs[:, 3]) / 2
+    inside = (mx > x0) & (mx < x1) & (my > y0) & (my < y1)
+    along = 0.0 if (x1 - x0) >= (y1 - y0) else 90.0
+    off = np.abs(((segs[:, 5] - along) + 90) % 180 - 90)
+    short = segs[:, 4] <= 0.9 * min(x1 - x0, y1 - y0)
+    return int((inside & short & (off >= 45)).sum())
+
+
+def _wall_side(box, wall_dist: np.ndarray) -> str:
+    """Which edge of the box (x, y, w, h) lies against a wall."""
+    x, y, w, h = box
+    H, W = wall_dist.shape
+    edges = {"top": wall_dist[max(0, y), x:x + w], "bottom": wall_dist[min(H - 1, y + h - 1), x:x + w],
+             "left": wall_dist[y:y + h, max(0, x)], "right": wall_dist[y:y + h, min(W - 1, x + w - 1)]}
+    return min(edges, key=lambda k: float(np.median(edges[k])) if edges[k].size else 1e9)
+
+
+def _bath_fixture(comp: np.ndarray, box, wall_dist: np.ndarray, t: float, ppc: float):
+    """Toilet or wall basin from a rounded bowl against a wall. A toilet's bowl is elongated away
+    from the wall (tank at the wall); a basin's bowl is round or wider along the wall."""
+    x, y, bw, bh = box
+    side = _wall_side(box, wall_dist)
+    along, away = ((bw, bh) if side in ("top", "bottom") else (bh, bw))
+    along, away = along / ppc, away / ppc
+    if not (28 <= min(along, away) and max(along, away) <= 90):
+        return None
+    cs, hier = cv2.findContours(comp, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    if hier is None:
+        return None
+    bowls = []
+    for i, c in enumerate(cs):
+        if hier[0][i][3] < 0 or len(c) < 8:
+            continue
+        cx, cy, cw, ch = cv2.boundingRect(c)
+        if max(cw, ch) < 18 * ppc:
+            continue
+        fill = cv2.contourArea(c) / max(1.0, cw * ch)
+        if 0.62 <= fill <= 0.9:                      # an ellipse fills ~0.79 of its box, a rectangle ~1
+            bowls.append((cw * ch, cw, ch))
+    if not bowls:
+        return None
+    _, cw, ch = max(bowls)
+    b_along, b_away = ((cw, ch) if side in ("top", "bottom") else (ch, cw))
+    if 45 <= away <= 85 and 33 <= along <= 75 and b_away >= 1.1 * b_along and 25 * ppc <= b_away <= 55 * ppc:
+        return "toilet", {"bath": 0.9}, 0.75, f"{along:.0f}x{away:.0f} cm, bowl elongated away from the wall"
+    if 35 <= along <= 75 and 28 <= away <= 62 and b_along >= 0.95 * b_away:
+        return "washbasin", {"bath": 0.6}, 0.65, f"{along:.0f}x{away:.0f} cm, rounded bowl against a wall"
+    return None
+
+
+def _gap(a, b) -> float:
+    return max(0.0, max(a[0], b[0]) - min(a[2], b[2]), max(a[1], b[1]) - min(a[3], b[3]))
+
+
+def _beds(objs: list[Obj], ppc: float) -> None:
+    """Small pieces at a bed's head corners are nightstands; pieces inside a bed outline (pillows,
+    blanket folds read as tables, counters or basins) are part of the bed."""
+    beds = [o for o in objs if o.kind == "bed"]
+    drop = set()
+    for bed in beds:
+        x0, y0, x1, y1 = bed.bbox
+        for o in objs:
+            if o is bed or o.kind not in ("seat", "side table", "armchair", "table", "counter", "sink", "washbasin"):
+                continue
+            ox0, oy0, ox1, oy1 = o.bbox
+            small = max(ox1 - ox0, oy1 - oy0) <= 80 * ppc
+            if _gap(bed.bbox, o.bbox) > 12 * ppc:
+                continue
+            tol = 12 * ppc
+            at_x = min(abs(ox0 - x0), abs(ox1 - x1), abs(ox1 - x0), abs(ox0 - x1)) <= tol
+            at_y = min(abs(oy0 - y0), abs(oy1 - y1), abs(oy1 - y0), abs(oy0 - y1)) <= tol
+            if small and at_x and at_y and o.kind in ("seat", "side table", "armchair"):
+                o.kind, o.functions, o.confidence = "nightstand", {"bedroom": 0.3}, 0.5
+                o.evidence.append("at a bed's corner")
+            elif x0 - 2 <= o.center[0] <= x1 + 2 and y0 - 2 <= o.center[1] <= y1 + 2:
+                drop.add(id(o))
+    objs[:] = [o for o in objs if id(o) not in drop]
+
+
+def _lone_seats(objs: list[Obj], ppc: float) -> None:
+    """A seat-sized square is a seat only beside a table, counter or another seat (bar stools,
+    dining chairs); alone it is a symbol, a hamper or a lamp."""
+    company = ("seat", "table", "dining set", "counter", "counter run", "sofa", "loveseat")
+    keep = []
+    for o in objs:
+        if o.kind == "seat" and not any(p is not o and p.kind in company and _gap(o.bbox, p.bbox) <= 50 * ppc for p in objs):
+            continue
+        keep.append(o)
+    objs[:] = keep
+
+
+def _dedupe(objs: list[Obj]) -> None:
+    """One object per drawn thing: of near-identical boxes keep the most confident reading."""
+    def iou(a, b):
+        ix = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
+        iy = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+        inter = ix * iy
+        ar = lambda r: (r[2] - r[0]) * (r[3] - r[1])  # noqa: E731
+        return inter / max(1e-6, ar(a) + ar(b) - inter)
+    keep: list[Obj] = []
+    for o in sorted(objs, key=lambda o: -o.confidence):
+        if not any(iou(o.bbox, k.bbox) >= 0.85 for k in keep):
+            keep.append(o)
+    order = {id(o): i for i, o in enumerate(objs)}
+    objs[:] = sorted(keep, key=lambda o: order[id(o)])
+
+
+def within_walls(objs: list[Obj], building: dict) -> list[Obj]:
+    """Objects inside the walls of a building: the convex hull of each building's walls (walls are
+    assigned to the nearest footprint). Legend symbols, title-block words and equipment drawn
+    outside the exterior walls are not furniture of the plan."""
+    walls = building.get("walls") or []
+    if not walls:
+        return objs
+    feet = [np.asarray(b["polygon"], np.float32).reshape(-1, 1, 2) for b in building.get("buildings", []) if b.get("polygon")]
+    groups: dict[int, list] = {}
+    for w in walls:
+        mid = ((w["p0"][0] + w["p1"][0]) / 2, (w["p0"][1] + w["p1"][1]) / 2)
+        k = max(range(len(feet)), key=lambda i: cv2.pointPolygonTest(feet[i], mid, True)) if feet else 0
+        groups.setdefault(k, []).extend([w["p0"], w["p1"]])
+    hulls = [cv2.convexHull(np.asarray(pts, np.float32)) for pts in groups.values() if len(pts) >= 3]
+    kept = [o for o in objs if any(cv2.pointPolygonTest(h, tuple(map(float, o.center)), False) >= 0 for h in hulls)]
+    for i, o in enumerate(kept, 1):
+        o.id = f"OB{i:03d}"
+    return kept
+
+
+def _oval_basin(comp: np.ndarray, origin, drains: list, ppc: float):
+    """An oval or round bowl 25-65 cm (its outline fills an ellipse's share of its box) with a
+    drain inside: a basin. Bath or kitchen is decided by the fixtures around it (_context)."""
+    h, w = comp.shape
+    if not (25 * ppc <= max(h, w) <= 65 * ppc and min(h, w) >= 18 * ppc):
+        return None
+    cs, hier = cv2.findContours(comp, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    if hier is None or not any(hier[0][i][3] >= 0 for i in range(len(cs))):
+        return None
+    outer = max((c for i, c in enumerate(cs) if hier[0][i][3] < 0), key=cv2.contourArea)
+    ox, oy = origin
+    x, y, cw, ch = cv2.boundingRect(outer)
+    fill = cv2.contourArea(outer) / max(1.0, cw * ch)
+    mx, my = 0.1 * cw, 0.1 * ch
+    if 0.68 <= fill <= 0.88 and any(ox + x + mx < d[0] < ox + x + cw - mx and oy + y + my < d[1] < oy + y + ch - my for d in drains):
+        return "sink", {"kitchen": 0.4, "bath": 0.5}, 0.65, f"{w / ppc:.0f}x{h / ppc:.0f} cm oval bowl with a drain"
+    return None
+
+
+CODED = re.compile(r"\d|[%#]")
+
+
+def _tags(objs: list[Obj], ocr_boxes) -> None:
+    """A box-like 'table' / 'chair' enclosing a coded annotation (KIT-1, A-3.7, 2% SLOPE, a detail
+    number) is an annotation tag, not furniture. Room names (LIVING) are not codes: furniture
+    under a room label stays."""
+    words = [b for b in ocr_boxes if CODED.search(str(getattr(b, "text", ""))) and float(getattr(b, "confidence", 0)) >= 60]
+    keep = []
+    for o in objs:
+        if o.kind in ("table", "armchair", "side table", "seat") and any(
+                o.bbox[0] <= b.x + b.width / 2 <= o.bbox[2] and o.bbox[1] <= b.y + b.height / 2 <= o.bbox[3] for b in words):
+            continue
+        keep.append(o)
+    objs[:] = keep
+
+
+def _group_pieces(loops: list, circ: list, origin) -> list:
+    """Pieces drawn inside a furniture group (a living set on a rug): a 60-100 cm square frame
+    holding a seat cushion is an armchair; a 35-60 cm square holding a lamp circle is an end table."""
+    ox, oy = origin
+    ppc = _PPC[0]
+    out = []
+
+    def inside(b, a):
+        return b[0] >= a[0] - 2 and b[1] >= a[1] - 2 and b[2] <= a[2] + 2 and b[3] <= a[3] + 2 and b != a
+    for w, h, box in loops:
+        if not (max(w, h) <= 1.3 * min(w, h)):
+            continue
+        if 60 <= min(w, h) and max(w, h) <= 100 and any(
+                inside(b, box) and 40 <= max(lw, lh) <= 75 and min(lw, lh) >= 35 for lw, lh, b in loops):
+            out.append(("armchair", box, {"living": 0.5}, f"{w:.0f}x{h:.0f} cm frame around a seat, in a furniture group"))
+        elif 35 <= min(w, h) and max(w, h) <= 60 and any(
+                box[0] <= cx - ox <= box[2] and box[1] <= cy - oy <= box[3] and 5 * ppc <= r <= 0.45 * min(w, h) * ppc
+                for cx, cy, r, _ in circ):
+            out.append(("side table", box, {"living": 0.2}, f"{w:.0f}x{h:.0f} cm with a lamp, in a furniture group"))
+    return out
+
+
+def _seating(objs: list[Obj], ppc: float) -> None:
+    """Small tables flanking or fronting a sofa / loveseat (within 30 cm) are end / coffee tables of
+    a living arrangement: the arrangement, not each piece, is the evidence."""
+    seats = [o for o in objs if o.kind in ("sofa", "loveseat")]
+    for o in objs:
+        if o.kind == "side table" and any(_gap(o.bbox, s.bbox) <= 30 * ppc for s in seats):
+            o.kind, o.functions, o.confidence = "end table", {"living": 0.35}, 0.5
+            o.evidence.append("beside a sofa: part of a seating arrangement")

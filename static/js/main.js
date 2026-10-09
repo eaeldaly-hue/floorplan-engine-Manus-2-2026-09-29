@@ -4,7 +4,7 @@ import { $, fmtBytes, fmtSeconds } from './dom.js';
 import { analyzeFile, analyzePdfPage, fetchHealth, fetchSampleFile, inspectPdf } from './api.js';
 import { Viewer } from './viewer.js';
 import {
-  markActiveRow, renderMetrics, renderOpenings, renderRaw, renderRooms, renderWarnings, revealRow, setNavCounts,
+  markActiveRow, renderMetrics, renderObjects, renderOpenings, renderRaw, renderRooms, renderWarnings, renderZones, revealRow, setNavCounts,
 } from './panels.js';
 
 // Client-side mirror of the server's limits (app.py); the server still enforces them.
@@ -302,7 +302,9 @@ function showResult(data, elapsedMs) {
   renderMetrics(data, elapsedMs);
   renderWarnings(data.warnings);
   renderRooms(data, { onHover, onSelect });
+  renderZones(data, { onHover, onSelect });
   renderOpenings(data, { onHover, onSelect });
+  renderObjects(data, { onHover, onSelect });
   renderRaw(data);
   setNavCounts(data);
   if (data.source?.type === 'pdf') {

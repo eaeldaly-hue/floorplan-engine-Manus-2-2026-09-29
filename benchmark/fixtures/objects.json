@@ -1,0 +1,762 @@
+{
+ "about": "Furniture / fixture / appliance ground truth (page pixels at the default render). bbox = [x0, y0, x1, y1]. Every typed object outside these boxes is a false positive (legend symbols, electrical symbols, lamps, notes). Hand-labelled 2026-10-09 from the rendered page. 'region': only detections centred inside it are scored (a labelled part of a dense sheet). 'ignore': boxes where any detection is neutral (TV strips, walk-in closet shelving, ambiguous dashed boxes).",
+ "plans": {
+  "3.pdf:5": {
+   "objects": [
+    {
+     "kind": "bed",
+     "bbox": [
+      1350,
+      655,
+      1760,
+      1130
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      1345,
+      670,
+      1420,
+      735
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      1345,
+      1050,
+      1420,
+      1115
+     ]
+    },
+    {
+     "kind": "bed",
+     "bbox": [
+      660,
+      1260,
+      1000,
+      1620
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      658,
+      1165,
+      730,
+      1230
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      658,
+      1640,
+      730,
+      1715
+     ]
+    },
+    {
+     "kind": "wardrobe",
+     "bbox": [
+      1350,
+      1220,
+      1730,
+      1310
+     ]
+    },
+    {
+     "kind": "wardrobe",
+     "bbox": [
+      1770,
+      1750,
+      1860,
+      2220
+     ]
+    },
+    {
+     "kind": "shower",
+     "bbox": [
+      650,
+      1895,
+      840,
+      2225
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      890,
+      2095,
+      965,
+      2230
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      1055,
+      2135,
+      1165,
+      2220
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      1225,
+      1935,
+      1312,
+      2045
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      1355,
+      1965,
+      1490,
+      2065
+     ]
+    },
+    {
+     "kind": "shower",
+     "bbox": [
+      1355,
+      2090,
+      1740,
+      2225
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      1350,
+      1745,
+      1445,
+      1890
+     ]
+    },
+    {
+     "kind": "range",
+     "bbox": [
+      1980,
+      795,
+      2087,
+      935
+     ]
+    },
+    {
+     "kind": "sink",
+     "bbox": [
+      2270,
+      605,
+      2455,
+      700
+     ]
+    },
+    {
+     "kind": "dishwasher",
+     "bbox": [
+      2465,
+      610,
+      2565,
+      700
+     ]
+    },
+    {
+     "kind": "refrigerator",
+     "bbox": [
+      2260,
+      1010,
+      2440,
+      1140
+     ]
+    },
+    {
+     "kind": "counter",
+     "bbox": [
+      2090,
+      710,
+      2805,
+      908
+     ]
+    },
+    {
+     "kind": "seat",
+     "bbox": [
+      2803,
+      635,
+      2848,
+      700
+     ]
+    },
+    {
+     "kind": "seat",
+     "bbox": [
+      2803,
+      720,
+      2848,
+      785
+     ]
+    },
+    {
+     "kind": "seat",
+     "bbox": [
+      2803,
+      805,
+      2848,
+      868
+     ]
+    },
+    {
+     "kind": "dining set",
+     "bbox": [
+      2935,
+      690,
+      3275,
+      1220
+     ]
+    },
+    {
+     "kind": "washer",
+     "bbox": [
+      1995,
+      1175,
+      2090,
+      1295
+     ]
+    },
+    {
+     "kind": "dryer",
+     "bbox": [
+      2145,
+      1170,
+      2230,
+      1295
+     ]
+    },
+    {
+     "kind": "bed",
+     "bbox": [
+      2020,
+      1640,
+      2425,
+      2115
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      2355,
+      1655,
+      2425,
+      1720
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      2355,
+      2035,
+      2425,
+      2100
+     ]
+    },
+    {
+     "kind": "media",
+     "bbox": [
+      2463,
+      1652,
+      2510,
+      1995
+     ]
+    },
+    {
+     "kind": "coffee table",
+     "bbox": [
+      3075,
+      1715,
+      3193,
+      1945
+     ]
+    },
+    {
+     "kind": "sofa",
+     "bbox": [
+      3250,
+      1605,
+      3412,
+      2055
+     ]
+    },
+    {
+     "kind": "sofa",
+     "bbox": [
+      2957,
+      2045,
+      3253,
+      2230
+     ]
+    },
+    {
+     "kind": "end table",
+     "bbox": [
+      2807,
+      2105,
+      2913,
+      2210
+     ]
+    },
+    {
+     "kind": "end table",
+     "bbox": [
+      3280,
+      2105,
+      3395,
+      2210
+     ]
+    }
+   ],
+   "note": "development (tuned on)"
+  },
+  "22.pdf:6": {
+   "note": "unit 201 only (top-left apartment); development: labelled before tuning, then tuned on",
+   "region": [
+    1400,
+    620,
+    2700,
+    1400
+   ],
+   "ignore": [
+    [
+     1583,
+     945,
+     1665,
+     965
+    ],
+    [
+     1800,
+     650,
+     1960,
+     850
+    ],
+    [
+     2640,
+     780,
+     2700,
+     900
+    ],
+    [
+     2380,
+     1130,
+     2440,
+     1230
+    ]
+   ],
+   "objects": [
+    {
+     "kind": "bed",
+     "bbox": [
+      1560,
+      660,
+      1690,
+      830
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      1517,
+      662,
+      1555,
+      695
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      1700,
+      662,
+      1737,
+      695
+     ]
+    },
+    {
+     "kind": "shower",
+     "bbox": [
+      1965,
+      652,
+      2090,
+      730
+     ]
+    },
+    {
+     "kind": "shower",
+     "bbox": [
+      2170,
+      652,
+      2295,
+      725
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      2085,
+      745,
+      2125,
+      790
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      2175,
+      740,
+      2210,
+      790
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      2095,
+      825,
+      2140,
+      860
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      2095,
+      905,
+      2140,
+      945
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      2160,
+      825,
+      2200,
+      860
+     ]
+    },
+    {
+     "kind": "washer",
+     "bbox": [
+      2170,
+      905,
+      2220,
+      970
+     ]
+    },
+    {
+     "kind": "bed",
+     "bbox": [
+      2475,
+      785,
+      2575,
+      960
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      2430,
+      920,
+      2470,
+      960
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      2585,
+      920,
+      2625,
+      960
+     ]
+    },
+    {
+     "kind": "sofa",
+     "bbox": [
+      1678,
+      1088,
+      1860,
+      1165
+     ]
+    },
+    {
+     "kind": "end table",
+     "bbox": [
+      1620,
+      1110,
+      1670,
+      1160
+     ]
+    },
+    {
+     "kind": "end table",
+     "bbox": [
+      1873,
+      1110,
+      1925,
+      1160
+     ]
+    },
+    {
+     "kind": "armchair",
+     "bbox": [
+      1608,
+      1190,
+      1672,
+      1255
+     ]
+    },
+    {
+     "kind": "armchair",
+     "bbox": [
+      1865,
+      1190,
+      1930,
+      1255
+     ]
+    },
+    {
+     "kind": "coffee table",
+     "bbox": [
+      1718,
+      1198,
+      1820,
+      1250
+     ]
+    },
+    {
+     "kind": "media",
+     "bbox": [
+      1705,
+      1358,
+      1835,
+      1385
+     ]
+    },
+    {
+     "kind": "dining set",
+     "bbox": [
+      2020,
+      1180,
+      2200,
+      1320
+     ]
+    },
+    {
+     "kind": "seat",
+     "bbox": [
+      2340,
+      1145,
+      2372,
+      1185
+     ]
+    },
+    {
+     "kind": "seat",
+     "bbox": [
+      2340,
+      1205,
+      2372,
+      1245
+     ]
+    },
+    {
+     "kind": "seat",
+     "bbox": [
+      2340,
+      1268,
+      2372,
+      1305
+     ]
+    },
+    {
+     "kind": "counter",
+     "bbox": [
+      2355,
+      1105,
+      2435,
+      1340
+     ]
+    },
+    {
+     "kind": "counter",
+     "bbox": [
+      2595,
+      1100,
+      2650,
+      1340
+     ]
+    },
+    {
+     "kind": "range",
+     "bbox": [
+      2490,
+      1340,
+      2545,
+      1390
+     ]
+    },
+    {
+     "kind": "refrigerator",
+     "bbox": [
+      2590,
+      1120,
+      2650,
+      1195
+     ]
+    },
+    {
+     "kind": "dishwasher",
+     "bbox": [
+      2595,
+      1205,
+      2650,
+      1260
+     ]
+    },
+    {
+     "kind": "sink",
+     "bbox": [
+      2600,
+      1265,
+      2647,
+      1310
+     ]
+    }
+   ]
+  },
+  "27.pdf:1": {
+   "note": "held out: labelled blind (before any detection was looked at), never tuned on",
+   "ignore": [
+    [
+     855,
+     1200,
+     970,
+     1295
+    ]
+   ],
+   "objects": [
+    {
+     "kind": "bathtub",
+     "bbox": [
+      858,
+      598,
+      948,
+      790
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      968,
+      595,
+      1038,
+      642
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      1135,
+      625,
+      1220,
+      685
+     ]
+    },
+    {
+     "kind": "shower",
+     "bbox": [
+      1103,
+      715,
+      1215,
+      805
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      510,
+      862,
+      548,
+      925
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      512,
+      945,
+      562,
+      990
+     ]
+    },
+    {
+     "kind": "shower",
+     "bbox": [
+      620,
+      815,
+      720,
+      910
+     ]
+    },
+    {
+     "kind": "wardrobe",
+     "bbox": [
+      490,
+      1030,
+      720,
+      1085
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      495,
+      1095,
+      540,
+      1140
+     ]
+    },
+    {
+     "kind": "nightstand",
+     "bbox": [
+      495,
+      1330,
+      540,
+      1372
+     ]
+    },
+    {
+     "kind": "bed",
+     "bbox": [
+      495,
+      1148,
+      730,
+      1325
+     ]
+    },
+    {
+     "kind": "desk",
+     "bbox": [
+      775,
+      1148,
+      835,
+      1325
+     ]
+    }
+   ]
+  }
+ }
+}

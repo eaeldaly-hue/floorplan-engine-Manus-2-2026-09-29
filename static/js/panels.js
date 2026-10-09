@@ -2,7 +2,7 @@
 // Everything rendered here is read directly from the /api/analyze response.
 
 import { $, el, fmtNumber, fmtPercent, fmtSeconds } from './dom.js';
-import { isEstimateMethod } from './viewer.js';
+import { FUNCTION_COLORS, functionOf, isEstimateMethod } from './viewer.js';
 
 const METHOD_LABELS = {
   'wall-region': 'Wall region',
@@ -48,12 +48,13 @@ export function renderMetrics(data, elapsedMs) {
     metric('Windows', data.window_count ?? 0, { dot: 'var(--window)' }),
     metric('Unclassified', data.unclassified_opening_count ?? 0, { dot: 'var(--opening)', sub: 'openings' }),
     metric('Openings total', data.opening_count ?? (data.openings || []).length),
-    metric('Wall segments', 'Not exposed by API', {
-      na: true, wide: true,
-    }),
-    metric('Scale', scale ? `${fmtNumber(scale.pixels_per_unit)} px/${scale.unit}` : 'Not determined', {
-      sub: scale ? `calibrated from ${scale.calibration_rooms} rooms` : undefined,
-      na: !scale,
+    metric('Functional zones', data.zone_count ?? 0, { sub: 'inside structural spaces' }),
+    metric('Objects', data.object_count ?? 0, { sub: 'furniture · fixtures' }),
+    metric('Scale', scale ? `${fmtNumber(scale.pixels_per_unit)} px/${scale.unit}`
+      : data.scale_estimate ? `≈ ${fmtNumber(data.scale_estimate.px_per_cm)} px/cm` : 'Not determined', {
+      sub: scale ? `calibrated from ${scale.calibration_rooms} rooms`
+        : data.scale_estimate ? `estimate: ${data.scale_estimate.source}` : undefined,
+      na: !scale && !data.scale_estimate,
     }),
     metric('Processing', fmtSeconds(elapsedMs), { sub: 'round trip incl. upload' }),
     metric('Image', `${data.image.width} × ${data.image.height}`, { sub: 'pixels', wide: true }),
@@ -120,8 +121,60 @@ export function renderRooms(data, handlers) {
   $('spaces-count').textContent = spaces.length;
   $('spaces-table').tBodies[0].replaceChildren(...spaces.map((space) => linkedRow(`space:${space.id}`, [
     el('td', { class: 'mono id-cell', text: space.id }),
-    el('td', {}, el('span', { class: 'cell-chips' }, ...boundaryChip(space.boundary, 'space'))),
+    el('td', {},
+      el('span', { class: 'cell-chips' }, ...boundaryChip(space.boundary, 'space')),
+      spaceContents(space)),
     areaCell(space.area, space.dimensions),
+  ], handlers)));
+}
+
+// What an unnamed structural space holds: functional zones, or one function inferred from its contents.
+function spaceContents(space) {
+  if (space.zone_ids?.length) {
+    return el('span', { class: 'cell-sub', text: `open plan: ${space.zone_ids.length} functional zones${space.circulation_m2 ? ` · ${fmtNumber(space.circulation_m2, 1)} m² circulation` : ''}` });
+  }
+  const fn = space.function;
+  if (!fn) return null;
+  return el('span', { class: 'cell-sub', text: `probably ${fn.function} (${fmtPercent(fn.confidence)}) · ${fn.evidence.map((e) => e.kind).join(', ')}` });
+}
+
+const fnChip = (fn) => el('span', { class: 'chip chip-fn', style: `--fn:${FUNCTION_COLORS[fn] || '#666'}`, text: fn || 'unknown' });
+
+export function renderZones(data, handlers) {
+  const zones = data.zones || [];
+  $('zones-section').hidden = zones.length === 0;
+  $('zones-count').textContent = zones.length;
+  $('zones-table').tBodies[0].replaceChildren(...zones.map((zone) => {
+    const key = zone.room_ids?.length ? `room:${zone.room_ids[0]}` : `zone:${zone.id}`;
+    const evidence = zone.evidence.map((e) => (e.source === 'label' ? `label “${e.id}”` : e.kind)).join(', ');
+    const borders = (zone.boundaries || []).filter((b) => b.to !== 'circulation')
+      .map((b) => `${b.to.split('.').pop()}: ${b.cue}`).join(' · ');
+    return linkedRow(key, [
+      el('td', { class: 'mono id-cell', text: zone.id }),
+      el('td', {},
+        el('span', { class: 'cell-chips' }, fnChip(zone.function),
+          el('span', { class: 'cell-note', text: `${fmtPercent(zone.confidence)} · in ${zone.space_id}${zone.room_ids?.length ? ` · room ${zone.room_ids.join(', ')}` : ''}` })),
+        el('span', { class: 'reason', title: evidence, text: evidence }),
+        borders ? el('span', { class: 'cell-sub', text: `boundaries ${borders}` }) : null,
+      ),
+      el('td', { class: 'num' }, el('span', { class: 'cell-main', text: `${fmtNumber(zone.area_m2, 1)} m²` }),
+        el('span', { class: 'cell-sub', text: 'zone estimate' })),
+    ], handlers);
+  }));
+}
+
+export function renderObjects(data, handlers) {
+  const objects = data.objects || [];
+  $('objects-section').hidden = objects.length === 0;
+  $('objects-count').textContent = objects.length;
+  $('objects-table').tBodies[0].replaceChildren(...objects.map((obj) => linkedRow(`object:${obj.id}`, [
+    el('td', { class: 'mono id-cell', text: obj.id }),
+    el('td', {},
+      el('span', { class: 'cell-chips' }, el('span', { class: 'cell-main', text: obj.kind }), fnChip(functionOf(obj.functions)),
+        el('span', { class: 'cell-note', text: fmtPercent(obj.confidence) })),
+      el('span', { class: 'reason', text: (obj.evidence || []).join('; ') }),
+    ),
+    el('td', { class: 'num' }, el('span', { class: 'cell-sub', text: [obj.space_id, obj.zone_id?.split('.').pop()].filter(Boolean).join(' · ') || '—' })),
   ], handlers)));
 }
 
@@ -203,5 +256,9 @@ export function revealRow(key) {
 export function setNavCounts(data) {
   $('nav-rooms-count').textContent = (data.rooms || []).length + (data.unlabeled_spaces || []).length;
   $('nav-openings-count').textContent = (data.openings || []).length;
+  $('nav-zones').hidden = !(data.zones || []).length;
+  $('nav-zones-count').textContent = (data.zones || []).length;
+  $('nav-objects').hidden = !(data.objects || []).length;
+  $('nav-objects-count').textContent = (data.objects || []).length;
   $('results-nav').hidden = false;
 }
