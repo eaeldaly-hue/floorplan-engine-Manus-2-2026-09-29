@@ -762,8 +762,11 @@ def _build_room_records(
     # Rooms without a confident printed dimension get a local re-read near their label. The
     # re-reads depend only on their own label, so they run concurrently; the results are
     # applied in room order.
+    # A page whose OCR read no dimension-like text at all does not print room dimensions: on such
+    # pages (measured: 15 test plans, 427 re-reads) a local re-read never found one, while costing a
+    # Tesseract run per label (378 labels on 24.pdf: 18 s). Pages with dimension text keep the re-read.
     retry = [room for room in label_records
-             if not room.get("dimensions") or room["dimensions"].get("ocr_confidence", 0) < 65]
+             if not room.get("dimensions") or room["dimensions"].get("ocr_confidence", 0) < 65] if dimensions else []
     found = run_ocr_tasks(lambda room: _retry_dimensions_near_label(image, room, wall_mask), retry)
     for room, local_dimensions in zip(retry, found):
         current_dimensions = room.get("dimensions")
@@ -1393,6 +1396,19 @@ class FloorPlanAnalyzer:
         # [cleaning ->] walls / gaps / spaces -> Plan Model reconstruction (when used). Text-
         # dependent steps (label attachment) follow after OCR. Results, or the exception, are taken
         # where they were computed before.
+        # The page's vector geometry, cleaned, is needed on every PDF page (an alternative reading,
+        # and the furniture): it depends only on the page, so it starts now, alongside the default
+        # reading and OCR, and is collected where it was computed before.
+        cand_job = None
+        if cleaner_candidate is not None and cleaner is None and structure_image is None \
+                and os.environ.get("FLOORPLAN_VECTORS_EARLY", "1") != "0":
+            cand_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="floorplan-vectors")
+            cand_job = cand_pool.submit(cleaner_candidate)
+            cand_pool.shutdown(wait=False)
+
+        def candidate():
+            return cand_job.result() if cand_job is not None else cleaner_candidate()
+
         def structural():
             cleaned, geom = None, geometry
             if cleaner is not None:
@@ -1407,7 +1423,7 @@ class FloorPlanAnalyzer:
                 from . import reconstruction
                 if cleaner_candidate is not None and (plan_adapter.legacy_failed(st) or reconstruction._suspicious(st)):
                     # the page's vector geometry, cleaned: the first alternative for a broken page
-                    cand = cleaner_candidate()
+                    cand = candidate()
                     if cand is not None and cand.applicable:
                         vector = reconstruction.Hypothesis("vector-cleaned", 1.0, cand.recognition_image,
                                                            analyze_structure(cand.recognition_image),
@@ -1426,7 +1442,7 @@ class FloorPlanAnalyzer:
             layer = cleaned if cleaned is not None and cleaned.layer is not None else cand
             if layer is None and cleaner_candidate is not None:
                 try:
-                    layer = cleaner_candidate()
+                    layer = candidate()
                 except Exception:
                     layer = None
             return cleaned, geom, st, pending, (hyps, blocks, layer)

@@ -6,6 +6,7 @@ import math
 from types import SimpleNamespace
 
 import cv2
+import pytest
 import numpy as np
 
 from engine.arch.objects import (Obj, _beds, _crossed_boxes, _dedupe, _lone_seats, _oval_basin, _segments, _tags,
@@ -114,3 +115,51 @@ def test_a_bowl_among_kitchen_fixtures_is_a_kitchen_sink():
     _context(objs, PPC)
     assert objs[1].kind == "sink" and objs[1].functions == {"kitchen": 0.9}
     assert objs[3].kind == "washbasin"
+
+
+def _outline_ink(shapes):
+    ink = np.zeros((400, 600), np.uint8)
+    for kind, a, b in shapes:
+        if kind == "rect":
+            cv2.rectangle(ink, a, b, 255, 2)
+        elif kind == "ellipse":
+            cv2.ellipse(ink, a, b, 0, 0, 360, 255, 2)
+        elif kind == "circle":
+            cv2.circle(ink, a, b, 255, 1)
+    return ink
+
+
+def test_fixtures_from_closed_outlines():
+    from engine.arch.objects import _fixture_outlines
+    ppc = 1.0                                                  # 1 px per cm
+    ink = _outline_ink([("ellipse", (100, 120), (34, 80)), ("circle", (100, 70), 3),      # tub 68x160 + drain
+                        ("rect", (200, 40), (300, 130)), ("circle", (280, 85), 3),        # shower tray 100x90 + drain
+                        ("ellipse", (400, 80), (22, 16)), ("circle", (400, 80), 2)])      # basin 44x32 + drain
+    kinds = sorted(k for k, *_ in _fixture_outlines(ink, [], ppc))
+    assert kinds == ["bathtub", "shower", "sink"]
+
+
+def test_a_toilet_needs_its_tank_against_a_wall():
+    from engine.arch.objects import _fixture_outlines
+    ink = _outline_ink([("ellipse", (300, 200), (20, 16)), ("rect", (321, 180), (336, 220))])   # bowl + tank
+    wall = np.ones((400, 600), np.float32) * 50
+    wall[:, 345:] = 0                                          # a wall just behind the tank
+    assert [k for k, *_ in _fixture_outlines(ink, [], 1.0, wall)] == ["toilet"]
+    far = np.ones((400, 600), np.float32) * 50                 # no wall near: a chair at a table
+    assert _fixture_outlines(ink, [], 1.0, far) == []
+
+
+def test_small_scale_sheets_are_read_at_a_canonical_scale():
+    from engine.arch.objects import READ_PPC, _read_scale
+    assert _read_scale((3600, 5400), 1.83) == 1.0             # drawn large enough
+    assert _read_scale((1650, 2550), 0.28) == pytest.approx(min(READ_PPC / 0.28, (30e6 / (1650 * 2550)) ** 0.5))
+
+
+def test_outline_details_of_appliances_and_pieces_inside_fixtures_are_dropped():
+    from engine.arch.objects import _on_appliances, _within_fixtures
+    objs = [_obj(1, "range", (0, 0, 120, 120)),
+            Obj("OB002", "sink", (10, 10, 50, 50), {"kitchen": 0.4}, 0.65, ["40x40 cm bowl with a drain"]),
+            _obj(3, "toilet", (300, 0, 360, 80)), _obj(4, "side table", (305, 5, 355, 75))]
+    _on_appliances(objs)
+    _within_fixtures(objs)
+    assert [o.kind for o in objs] == ["range", "toilet"]

@@ -236,13 +236,32 @@ def _classify_component(w: float, h: float, loops: list, near_wall: bool, curved
 
 
 def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None, wall_mask: np.ndarray | None = None,
-                   wall_thickness: float | None = None) -> list[Obj]:
+                   wall_thickness: float | None = None, _rescaled: bool = False) -> list[Obj]:
     """Typed objects from the cleaner's non-architectural vector elements (+ words). When the
     cleaner could not type the page's walls (its layer has no WALL element), the walls come from
     `wall_mask` (the structural analysis, page frame) and the vectors lying on it are walls."""
     layer = getattr(cleaned, "layer", None)
     if layer is None or not ppc:
         return []
+    f = 1.0 if _rescaled else _read_scale(layer.shape, ppc)
+    if f > 1.0:
+        # Small-scale sheets draw fixtures a few pixels wide; the vectors have no resolution, so they
+        # are read at a canonical scale (up to READ_PPC px/cm, at most READ_PIXELS) and the boxes
+        # mapped back to the page.
+        from types import SimpleNamespace
+        sl = SimpleNamespace(shape=(int(layer.shape[0] * f), int(layer.shape[1] * f)) + tuple(layer.shape[2:]),
+                             wall_thickness=(layer.wall_thickness or 0) * f,
+                             elements=[SimpleNamespace(type=e.type, fill=e.fill, evidence=getattr(e, "evidence", ""),
+                                                       geometry=[(x * f, y * f) for x, y in e.geometry]) for e in layer.elements])
+        wm = None if wall_mask is None else cv2.resize(wall_mask, (sl.shape[1], sl.shape[0]), interpolation=cv2.INTER_NEAREST)
+        boxes = [SimpleNamespace(text=b.text, x=b.x * f, y=b.y * f, width=b.width * f, height=b.height * f,
+                                 confidence=getattr(b, "confidence", 60)) for b in ocr_boxes]
+        objs = vector_objects(SimpleNamespace(layer=sl), boxes, ppc * f, wm,
+                              None if wall_thickness is None else wall_thickness * f, _rescaled=True)
+        for o in objs:
+            o.bbox = tuple(v / f for v in o.bbox)
+            o.evidence.append(f"read at {f:.1f}x the page scale")
+        return objs
     h, w = layer.shape[:2]
     typed = any(e.type == "WALL" for e in layer.elements)
     if not typed and (wall_mask is None or wall_mask.shape[:2] != (h, w)):
@@ -274,6 +293,7 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None, wall_mask: n
     k = max(3, int(round(t)) | 1)
     near_arch = cv2.dilate(arch, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))) > 0
     wall_dist = cv2.distanceTransform((arch == 0).astype(np.uint8), cv2.DIST_L2, 3)
+    full_ink = ink.copy()                                # every non-wall line, nothing erased (fixture outlines)
     ink[near_arch] = 0                                  # furniture against a wall stays its own object
     ink = cv2.dilate(ink, np.ones((3, 3), np.uint8))
 
@@ -348,6 +368,10 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None, wall_mask: n
     for box in _crossed_boxes(segs, ppc):
         add("shower", box, {"bath": 1.0}, 0.75, f"{(box[2] - box[0]) / ppc:.0f}x{(box[3] - box[1]) / ppc:.0f} cm crossed rectangle")
 
+    # --- fixtures from closed outlines (independent of what they touch) --------------------------------
+    for kind, box, fn, conf, why in _fixture_outlines(full_ink, drains, ppc, wall_dist):
+        add(kind, box, fn, conf, why)
+
     # --- furniture from components ------------------------------------------------------------------
     n, lab, st, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     assemblies = []
@@ -402,8 +426,10 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None, wall_mask: n
     _tags(objs, ocr_boxes)
     _dining_from_pieces(objs, tables, ppc, add)
     _laundry(objs, ppc)
+    _on_appliances(objs)
     _context(objs, ppc)
     _beds(objs, ppc)
+    _within_fixtures(objs)
     _seating(objs, ppc)
     _lone_seats(objs, ppc)
     _dedupe(objs)
@@ -504,10 +530,27 @@ def _context(objs: list[Obj], ppc: float) -> None:
         elif o.kind == "sink" and not near_k and any("oval bowl" in e for e in o.evidence):
             o.kind, o.functions = "washbasin", {"bath": 0.5}
             o.evidence.append("a single oval bowl away from kitchen fixtures")
+        elif o.kind == "sink" and not near_k and any("bowl with a drain" in e for e in o.evidence) and not any(
+                c.kind in ("counter", "counter run") and _gap(c.bbox, o.bbox) <= 100 * ppc for c in objs):
+            o.kind, o.functions = "washbasin", {"bath": 0.5}
+            o.evidence.append("no kitchen fixture within 3 m and no counter beside it")
         if o.kind == "washer" and (any(k.kind == "range" and math.dist(k.center, o.center) <= 300 * ppc for k in near_k)
                                    or any(s.kind == "sink" and math.dist(s.center, o.center) <= 200 * ppc for s in objs)):
             o.kind, o.functions = "dishwasher", {"kitchen": 1.0}
             o.evidence.append("among kitchen fixtures: a dishwasher")
+
+
+READ_PPC = 1.0           # px per cm at which fixtures are read (a toilet bowl ~40 px)
+SMALL_PPC = 0.6          # sheets drawn below this scale are re-read at READ_PPC
+READ_PIXELS = 30e6       # at most this many pixels per raster of the reading
+
+
+def _read_scale(shape, ppc: float) -> float:
+    """Factor at which to rasterize the vectors for reading furniture (1 = the page as rendered)."""
+    if ppc >= SMALL_PPC:
+        return 1.0
+    cap = math.sqrt(READ_PIXELS / max(1.0, float(shape[0]) * float(shape[1])))
+    return max(1.0, min(READ_PPC / ppc, cap))
 
 
 # ------------------------------------------------------------------------------ geometric helpers
@@ -612,6 +655,7 @@ def _beds(objs: list[Obj], ppc: float) -> None:
         for o in objs:
             if o is bed or o.kind not in ("seat", "side table", "armchair", "table", "counter", "sink", "washbasin"):
                 continue
+            lamp = o.kind in ("sink", "washbasin") and any("with a drain" in e for e in o.evidence)
             ox0, oy0, ox1, oy1 = o.bbox
             small = max(ox1 - ox0, oy1 - oy0) <= 80 * ppc
             if _gap(bed.bbox, o.bbox) > 12 * ppc:
@@ -619,7 +663,8 @@ def _beds(objs: list[Obj], ppc: float) -> None:
             tol = 12 * ppc
             at_x = min(abs(ox0 - x0), abs(ox1 - x1), abs(ox1 - x0), abs(ox0 - x1)) <= tol
             at_y = min(abs(oy0 - y0), abs(oy1 - y1), abs(oy1 - y0), abs(oy0 - y1)) <= tol
-            if small and at_x and at_y and o.kind in ("seat", "side table", "armchair"):
+            if small and at_x and at_y and (o.kind in ("seat", "side table", "armchair") or lamp):
+                # a drained outline at a bed's head corner is a nightstand with its lamp, not a basin
                 o.kind, o.functions, o.confidence = "nightstand", {"bedroom": 0.3}, 0.5
                 o.evidence.append("at a bed's corner")
             elif x0 - 2 <= o.center[0] <= x1 + 2 and y0 - 2 <= o.center[1] <= y1 + 2:
@@ -649,7 +694,7 @@ def _dedupe(objs: list[Obj]) -> None:
         return inter / max(1e-6, ar(a) + ar(b) - inter)
     keep: list[Obj] = []
     for o in sorted(objs, key=lambda o: -o.confidence):
-        if not any(iou(o.bbox, k.bbox) >= 0.85 for k in keep):
+        if not any(iou(o.bbox, k.bbox) >= 0.85 or (k.kind == o.kind and iou(o.bbox, k.bbox) >= 0.5) for k in keep):
             keep.append(o)
     order = {id(o): i for i, o in enumerate(objs)}
     objs[:] = sorted(keep, key=lambda o: order[id(o)])
@@ -741,3 +786,115 @@ def _seating(objs: list[Obj], ppc: float) -> None:
         if o.kind == "side table" and any(_gap(o.bbox, s.bbox) <= 30 * ppc for s in seats):
             o.kind, o.functions, o.confidence = "end table", {"living": 0.35}, 0.5
             o.evidence.append("beside a sofa: part of a seating arrangement")
+
+
+def _fixture_outlines(ink: np.ndarray, drains: list, ppc: float, wall_dist: np.ndarray | None = None) -> list:
+    """Sanitary fixtures read from the closed outlines they are drawn with. Every fixture symbol is
+    a closed shape; its interior is a hole in the ink whatever the symbol touches (walls, counters,
+    neighbouring fixtures), so this does not depend on how the ink splits into components.
+
+      bathtub      an elongated rounded basin 120-195 x 45-95 cm with a drain
+      shower       a square-ish tray 65-200 cm (rectangular interior) with a drain
+      basin        a rounded / oval bowl 25-65 cm with a drain (bath or kitchen: decided by context)
+      toilet       an elliptical bowl 28-55 cm, no drain, with a narrow tank 6-30 cm deep beside it
+
+    Drains are the circles found in the vectors plus small round holes in the ink (polygonised circles).
+
+    Nested outlines (a tub's rim and basin) give one fixture: the outermost qualifying outline."""
+    cs, hier = cv2.findContours(ink, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    if hier is None:
+        return []
+    holes = []
+    drains = list(drains)
+    for i, c in enumerate(cs):
+        if hier[0][i][3] < 0:
+            continue
+        x, y, w, h = cv2.boundingRect(c)
+        area = cv2.contourArea(c)
+        if max(w, h) < 8 * ppc:
+            # a drain drawn as a small ring (polygonised circles are not arcs): a round hole 1.5-9 cm
+            if 1.5 * ppc <= max(w, h) <= 9 * ppc and max(w, h) <= 1.4 * max(1, min(w, h)) and area >= 0.3 * w * h:
+                drains.append((x + w / 2, y + h / 2, max(w, h) / 2, ()))
+            continue
+        holes.append((x, y, x + w, y + h, w / ppc, h / ppc, area / max(1.0, w * h)))
+
+    def drain_in(b, margin=0.15):
+        # a drain is small beside its bowl (a lamp's circle on a nightstand is not)
+        x0, y0, x1, y1 = b[:4]
+        mx, my = margin * (x1 - x0), margin * (y1 - y0)
+        r_max = 0.15 * min(x1 - x0, y1 - y0)
+        return any(x0 + mx < d[0] < x1 - mx and y0 + my < d[1] < y1 - my and d[2] <= r_max for d in drains)
+    out = []
+    for hb in holes:
+        x0, y0, x1, y1, wc, hc, fill = hb
+        lng, sht = max(wc, hc), min(wc, hc)
+        if 120 <= lng <= 195 and 45 <= sht <= 95 and 0.72 <= fill <= 0.97 and drain_in(hb):
+            out.append(("bathtub", hb[:4], {"bath": 1.0}, 0.75, f"{lng:.0f}x{sht:.0f} cm rounded basin with a drain"))
+        elif 65 <= sht and lng <= 200 and lng <= 1.8 * sht and fill >= 0.9 and drain_in(hb, 0.05):
+            out.append(("shower", hb[:4], {"bath": 1.0}, 0.7, f"{lng:.0f}x{sht:.0f} cm tray with a drain"))
+        elif 25 <= lng <= 65 and sht >= 18 and 0.62 <= fill <= 0.96 and drain_in(hb, 0.1):
+            out.append(("sink", hb[:4], {"kitchen": 0.4, "bath": 0.5}, 0.65, f"{lng:.0f}x{sht:.0f} cm bowl with a drain"))
+        elif 28 <= lng <= 55 and sht >= 22 and 0.68 <= fill <= 0.86 and not drain_in(hb, 0.0):
+            # a toilet bowl: elliptical, beside a narrow tank on its long axis
+            vertical = hc >= wc
+            for tb in holes:
+                tx0, ty0, tx1, ty1, tw, th, tfill = tb
+                tl, ts = max(tw, th), min(tw, th)
+                if tb is hb or not (6 <= ts <= 30 and 28 <= tl <= 65 and tfill >= 0.5):
+                    continue
+                if vertical and tw > th and min(abs(ty1 - y0), abs(y1 - ty0)) <= 15 * ppc and tx0 - 5 * ppc <= (x0 + x1) / 2 <= tx1 + 5 * ppc:
+                    break
+                if not vertical and th > tw and min(abs(tx1 - x0), abs(x1 - tx0)) <= 15 * ppc and ty0 - 5 * ppc <= (y0 + y1) / 2 <= ty1 + 5 * ppc:
+                    break
+            else:
+                continue
+            if wall_dist is not None:
+                # the tank stands against a wall (a chair's back at a table does not)
+                ty0i, ty1i, tx0i, tx1i = int(tb[1]), int(tb[3]) + 1, int(tb[0]), int(tb[2]) + 1
+                near = wall_dist[max(0, ty0i - int(30 * ppc)):ty1i + int(30 * ppc), max(0, tx0i - int(30 * ppc)):tx1i + int(30 * ppc)]
+                if not near.size or float(near.min()) > 2.0:
+                    continue
+            bx = (min(x0, tb[0]), min(y0, tb[1]), max(x1, tb[2]), max(y1, tb[3]))
+            out.append(("toilet", bx, {"bath": 0.9}, 0.75, f"{lng:.0f}x{sht:.0f} cm bowl with its tank"))
+    # nested outlines: keep the outermost fixture of each kind
+    keep = []
+    for k, o in enumerate(out):
+        if any(j != k and p[0] == o[0] and p[1][0] <= o[1][0] and p[1][1] <= o[1][1] and p[1][2] >= o[1][2]
+               and p[1][3] >= o[1][3] and p[1] != o[1] for j, p in enumerate(out)):
+            continue
+        keep.append(o)
+    return keep
+
+
+APPLIANCES = ("range", "refrigerator", "dishwasher", "washer", "dryer", "laundry appliance")
+
+
+def _on_appliances(objs: list[Obj]) -> None:
+    """A basin, tray or tub read from an outline that lies on an appliance (a burner in a range, the
+    drum or knob of a washer) is that appliance's detail, not a fixture."""
+    apps = [o for o in objs if o.kind in APPLIANCES]
+    keep = []
+    for o in objs:
+        if o.kind in ("sink", "shower", "bathtub") and any("with a drain" in e for e in o.evidence) and any(
+                a.bbox[0] <= o.center[0] <= a.bbox[2] and a.bbox[1] <= o.center[1] <= a.bbox[3] for a in apps):
+            continue
+        keep.append(o)
+    objs[:] = keep
+
+
+SANITARY = ("toilet", "shower", "bathtub", "sink", "washbasin")
+
+
+def _within_fixtures(objs: list[Obj]) -> None:
+    """A generic piece (table, seat, cabinet) lying mostly inside a sanitary fixture's outline is part
+    of that fixture (a toilet's bowl read as a side table, a tray's corners read as seats)."""
+    fixtures = [o for o in objs if o.kind in SANITARY]
+
+    def inside(o, f):
+        ix = max(0.0, min(o.bbox[2], f.bbox[2]) - max(o.bbox[0], f.bbox[0]))
+        iy = max(0.0, min(o.bbox[3], f.bbox[3]) - max(o.bbox[1], f.bbox[1]))
+        ao = max(1e-6, (o.bbox[2] - o.bbox[0]) * (o.bbox[3] - o.bbox[1]))
+        af = max(1e-6, (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+        return ix * iy >= 0.7 * ao or ix * iy >= 0.4 * (ao + af - ix * iy)
+    objs[:] = [o for o in objs if not (o.kind in ("side table", "seat", "armchair", "table", "media / cabinet")
+                                       and any(inside(o, f) for f in fixtures))]

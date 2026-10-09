@@ -491,10 +491,36 @@ def _glazing(paths, wall_pens, door_segs, band, band_dist, t, wall_dir=None) -> 
             parent[i] = parent[parent[i]]
             i = parent[i]
         return i
+    # Only lines within 2 degrees, at most t apart and overlapping can pair. A qualifying pair has
+    # points within t + M*sin(2 deg) of each other (M: the other line's length), so each line's box
+    # grown by t/2 + 0.04*(its own length) meets its partner's: lines are binned on a grid by these
+    # grown boxes and compared within shared cells, after the angle test - the same pairs as
+    # comparing all of them.
+    cell = max(64.0, 4.0 * (t + 2.0))
+    bins: dict = defaultdict(list)
+    spans = []
+    for k, (a, b, L, _ang) in enumerate(cands):
+        m = 0.5 * t + 0.04 * L + 1.0
+        gx0, gx1 = int((min(a[0], b[0]) - m) // cell), int((max(a[0], b[0]) + m) // cell)
+        gy0, gy1 = int((min(a[1], b[1]) - m) // cell), int((max(a[1], b[1]) + m) // cell)
+        spans.append((gx0, gx1, gy0, gy1))
+        for gx in range(gx0, gx1 + 1):
+            for gy in range(gy0, gy1 + 1):
+                bins[(gx, gy)].append(k)
+    bins = {key: np.asarray(v, int) for key, v in bins.items()}
+    angs = np.array([c[3] for c in cands], float)
+
+    def neighbours(i):
+        gx0, gx1, gy0, gy1 = spans[i]
+        parts = [bins[(gx, gy)] for gx in range(gx0, gx1 + 1) for gy in range(gy0, gy1 + 1)]
+        js = np.unique(np.concatenate(parts)) if parts else np.zeros(0, int)
+        js = js[js > i]
+        da = np.abs(angs[i] - angs[js]) % 180.0
+        return js[np.minimum(da, 180.0 - da) <= 2.0 + 1e-9].tolist()
     for i in range(len(cands)):
         a, b, L, ang = cands[i]
         u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
-        for j in range(i + 1, len(cands)):
+        for j in neighbours(i):
             c, d, M, ang2 = cands[j]
             da = abs(ang - ang2) % 180.0
             if min(da, 180 - da) > 2.0:
@@ -568,8 +594,12 @@ def build_layer(paths, image_shape, text_boxes=(), image: np.ndarray | None = No
     amount = {pen: sum(p.length() * max(1.0, p.width) for p in ps) for pen, ps in by_pen.items()}
     small = (int(shape[0] * PEN_SCALE), int(shape[1] * PEN_SCALE))
     tests = []
-    for pen in sorted(amount, key=lambda k: -amount[k])[:PEN_CANDIDATES]:
-        cover, model = _wall_test(by_pen[pen], small)
+    pens = sorted(amount, key=lambda k: -amount[k])[:PEN_CANDIDATES]
+    # each pen is reconstructed on its own: independent tests, run concurrently, read in pen order
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=min(4, max(1, len(pens)))) as pool:
+        results = list(pool.map(lambda pen: _wall_test(by_pen[pen], small), pens))
+    for pen, (cover, model) in zip(pens, results):
         walls = sum(w.style != "thin" for w in model.walls) if model else 0
         tests.append((pen, cover, walls))
         layer.pen_tests.append({"pen": list(pen), "wall_cover": round(cover, 2), "walls": walls})
@@ -744,10 +774,31 @@ def _drop_isolated_walls(layer: SemanticLayer, band: np.ndarray, t: float, share
     keep = ink >= share * ink[1:].max()
     keep[0] = False
     # a small cluster near a kept network belongs to it (piers, stubs between wide glazing)
-    big = np.isin(lab, np.nonzero(keep)[0]).astype(np.uint8)
-    reach = cv2.dilate(big, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(20 * t) | 1, int(20 * t) | 1))) > 0
+    big = keep[lab]
+    # 'within reach of a kept network': the structuring element is symmetric, so dilating each small
+    # cluster in its own window and testing it against the kept networks is the same test as
+    # dilating the (page-sized) networks - without a 20t-wide dilation of the whole page
+    k2 = int(20 * t) | 1
+    se = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k2, k2))
+    r = k2 // 2
+    # the Euclidean distance to the kept networks decides every cluster clearly inside or outside the
+    # (discrete, near-circular) reach; only a cluster on the boundary is tested with the element itself
+    dist = cv2.distanceTransform((~big).astype(np.uint8), cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
     for i in range(1, n):
-        if not keep[i] and reach[lab == i].any():
+        if keep[i]:
+            continue
+        x, y, bw, bh = stats[i, :4]
+        nearest = float(dist[y:y + bh, x:x + bw][lab[y:y + bh, x:x + bw] == i].min())
+        if nearest <= r - 1.5:
+            keep[i] = True
+            continue
+        if nearest > r + 1.5:
+            continue
+        x0, y0, x1, y1 = max(0, x - r), max(0, y - r), min(w, x + bw + r), min(h, y + bh + r)
+        own = (lab[y0:y1, x0:x1] == i).astype(np.uint8)
+        pad = cv2.copyMakeBorder(own, r, r, r, r, cv2.BORDER_CONSTANT, value=0)
+        grown_i = cv2.dilate(pad, se)[r:-r, r:-r] if r else cv2.dilate(own, se)
+        if (grown_i.astype(bool) & big[y0:y1, x0:x1]).any():
             keep[i] = True
     for e in layer.elements:
         if e.type not in ("WALL", "COLUMN"):

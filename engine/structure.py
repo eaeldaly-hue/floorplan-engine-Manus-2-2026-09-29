@@ -25,6 +25,8 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import math
+import os
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 import cv2
@@ -344,18 +346,32 @@ def hough_tiles(img: np.ndarray, tile: int = 512, overlap: int = 160, theta: flo
     short lines when many unrelated points compete; local accumulation keeps them."""
     h, w = img.shape[:2]
     step = tile - overlap
-    found = []
-    for y0 in range(0, max(1, h - overlap), step):
-        for x0 in range(0, max(1, w - overlap), step):
-            sub = img[y0:y0 + tile, x0:x0 + tile]
-            if not sub.any():
-                continue
-            lines = cv2.HoughLinesP(sub, 1, theta, **params)
-            if lines is not None:
-                found.append(lines[:, 0, :] + np.array([x0, y0, x0, y0]))
+    origins = [(x0, y0) for y0 in range(0, max(1, h - overlap), step) for x0 in range(0, max(1, w - overlap), step)]
+
+    def one(o):
+        x0, y0 = o
+        sub = img[y0:y0 + tile, x0:x0 + tile]
+        if not sub.any():
+            return None
+        lines = cv2.HoughLinesP(sub, 1, theta, **params)       # seeds its own generator per call
+        return None if lines is None else lines[:, 0, :] + np.array([x0, y0, x0, y0])
+    # tiles are independent (OpenCV releases the GIL): read concurrently, kept in tile order
+    if len(origins) >= 8:
+        with ThreadPoolExecutor(max_workers=_hough_workers()) as pool:
+            parts = list(pool.map(one, origins))
+    else:
+        parts = [one(o) for o in origins]
+    found = [p for p in parts if p is not None]
     if not found:
         return None
     return np.concatenate(found)[:, None, :]
+
+
+def _hough_workers() -> int:
+    try:
+        return max(1, int(os.environ.get("FLOORPLAN_HOUGH_WORKERS", "4")))
+    except ValueError:
+        return 4
 
 
 def _diagonal_bands(wall_mask: np.ndarray, thickness: float) -> list[WallBand]:
@@ -794,11 +810,6 @@ def thin_lines(symbol_ink: np.ndarray, wall_mask: np.ndarray) -> np.ndarray:
     return cv2.bitwise_and(symbol_ink, cv2.bitwise_not(cv2.dilate(wall_mask, np.ones((5, 5), np.uint8))))
 
 
-def _touches_wall(wall_mask, point, direction, reach) -> bool:
-    s = np.arange(0.0, reach + 1.0, 1.0)
-    return bool(_cross_occupancy(wall_mask, point, direction, np.array([-direction[1], direction[0]]), s, [-1.0, 0.0, 1.0]).max() > 0)
-
-
 def _continues_wall(wall_mask, point, direction, typical_t) -> bool:
     """A wall face or axis continues the line beyond this endpoint (wall runs along the line)."""
     n = np.array([-direction[1], direction[0]])
@@ -809,22 +820,56 @@ def _continues_wall(wall_mask, point, direction, typical_t) -> bool:
     return False
 
 
-def _trace(thin, wall_mask, point, d, reach, limit) -> tuple[np.ndarray, bool]:
-    """Follow a drawn line from `point` along d while ink continues; report whether it ends on a wall."""
-    n = np.array([-d[1], d[0]])
-    s = np.arange(1.0, limit, 1.0)
-    ink = _cross_occupancy(thin, point, d, n, s, [-1.5, -0.5, 0.5, 1.5]) > 0
-    misses = 0
-    last = 0.0
-    for step, has_ink in zip(s, ink):
-        if has_ink:
-            last, misses = step, 0
-        else:
-            misses += 1
-            if misses > 5:
+def _sample_batch(mask, P, D, N, S, V) -> np.ndarray:
+    """_cross_occupancy(..) > 0 for many lines at once: P, D, N (k, 2); S (m,); V (v,) -> (k, m) bool.
+    The coordinates are computed with the same operations, in the same order, as _cross_occupancy."""
+    xs = P[:, 0, None, None] + D[:, 0, None, None] * S[None, :, None] + N[:, 0, None, None] * V[None, None, :]
+    ys = P[:, 1, None, None] + D[:, 1, None, None] * S[None, :, None] + N[:, 1, None, None] * V[None, None, :]
+    return _sample(mask, xs, ys).any(axis=2)
+
+
+def _trace_many(thin, wall_mask, points, dirs, reach, limit, batch: int = 4096):
+    """_trace for many lines at once (identical results): follow each drawn line while ink continues
+    (it ends after more than 5 consecutive empty steps) and test whether its end touches a wall."""
+    points = np.asarray(points, float).reshape(-1, 2)
+    dirs = np.asarray(dirs, float).reshape(-1, 2)
+    k = len(points)
+    last = np.zeros(k)
+    s_all = np.arange(1.0, limit, 1.0)
+    V = np.array([-1.5, -0.5, 0.5, 1.5])
+    for b0 in range(0, k, batch):
+        idx = np.arange(b0, min(k, b0 + batch))
+        misses = np.zeros(len(idx), int)
+        alive = np.ones(len(idx), bool)
+        for c0 in range(0, len(s_all), 64):
+            if not alive.any():
                 break
-    end = np.asarray(point, float) + d * last
-    return end, _touches_wall(wall_mask, end, d, reach)
+            S = s_all[c0:c0 + 64]
+            rows = np.nonzero(alive)[0]
+            g = idx[rows]
+            P, D = points[g], dirs[g]
+            Nrm = np.stack([-D[:, 1], D[:, 0]], axis=1)
+            ink = _sample_batch(thin, P, D, Nrm, S, V)
+            j = np.arange(len(S))
+            last_true = np.maximum.accumulate(np.where(ink, j[None, :], -1), axis=1)
+            run = np.where(last_true >= 0, j[None, :] - last_true, j[None, :] + 1 + misses[rows, None])
+            hit = run >= 6
+            broke = hit.any(axis=1)
+            stop = np.where(broke, hit.argmax(axis=1), len(S) - 1)
+            lt = last_true[np.arange(len(rows)), stop]
+            upd = lt >= 0
+            last[g[upd]] = S[lt[upd]]
+            misses[rows] = run[np.arange(len(rows)), len(S) - 1]
+            alive[rows[broke]] = False
+    ends = points + dirs * last[:, None]
+    s_touch = np.arange(0.0, reach + 1.0, 1.0)
+    touch = np.zeros(k, bool)
+    for b0 in range(0, k, batch):
+        sl = slice(b0, min(k, b0 + batch))
+        D = dirs[sl]
+        Nrm = np.stack([-D[:, 1], D[:, 0]], axis=1)
+        touch[sl] = _sample_batch(wall_mask, ends[sl], D, Nrm, s_touch, np.array([-1.0, 0.0, 1.0])).any(axis=1)
+    return ends, touch
 
 
 def _line_bridged_gaps(wall_mask, thin, typical_t, existing) -> list[tuple]:
@@ -841,14 +886,16 @@ def _line_bridged_gaps(wall_mask, thin, typical_t, existing) -> list[tuple]:
         return []
     reach = max(6.0, 0.35 * typical_t)
     bridging = []
-    for x1, y1, x2, y2 in lines[:, 0, :].astype(float):
-        a, b = np.array([x1, y1]), np.array([x2, y2])
-        d = (b - a) / max(1e-9, float(np.linalg.norm(b - a)))
-        # Hough returns faint lines in pieces: trace each piece to the true ends of the drawn line.
-        b, touch_b = _trace(closed, wall_mask, b, d, reach, 32 * typical_t)
-        a, touch_a = _trace(closed, wall_mask, a, -d, reach, 32 * typical_t)
+    segs = lines[:, 0, :].astype(float)
+    A, B = segs[:, :2], segs[:, 2:]
+    Dn = np.array([(b - a) / max(1e-9, float(np.linalg.norm(b - a))) for a, b in zip(A, B)]).reshape(-1, 2)
+    # Hough returns faint lines in pieces: trace each piece to the true ends of the drawn line
+    # (all pieces at once; identical to tracing them one by one).
+    ends_b, touch_b = _trace_many(closed, wall_mask, B, Dn, reach, 32 * typical_t)
+    ends_a, touch_a = _trace_many(closed, wall_mask, A, -Dn, reach, 32 * typical_t)
+    for a, b, d, ta, tb in zip(ends_a, ends_b, Dn, touch_a, touch_b):
         length = float(np.linalg.norm(b - a))
-        if touch_a and touch_b and min_len <= length <= 32 * typical_t:
+        if ta and tb and min_len <= length <= 32 * typical_t:
             bridging.append((a, b, d, length))
     # de-duplicate (Hough returns several segments per drawn line)
     unique = []

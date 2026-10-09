@@ -322,10 +322,7 @@ def extract_aggregated(image, *, min_confidence: float = 25.0, psms=(11, 6), max
     line_reader = text_lines_enabled()
     rotations = range(4) if (not line_reader or _all_rotations()) else (0,)
     jobs = [(variant, rotation, psm) for variant in variants for rotation in rotations for psm in psms]
-    # Scale-normalised text lines (engine.analysis.text_lines): every detected line read at its
-    # own optimal glyph height, packed into mosaics; read in the same pool as the page passes.
-    mosaics = text_line_mosaics(image) if line_reader else []
-    line_jobs = [(m, psm) for m in range(len(mosaics)) for psm in psms]
+    mosaics: list = []
 
     def read(job):
         if job[0] == "lines":
@@ -337,9 +334,15 @@ def extract_aggregated(image, *, min_confidence: float = 25.0, psms=(11, 6), max
         return _ocr._read_words(oriented, psm=psm, variant_name=variant.name, rotation=rotation,
                                 min_confidence=min_confidence)
 
-    results = _ocr.run_ocr_tasks(read, jobs + [("lines", j) for j in line_jobs])
-    line_results = results[len(jobs):]
-    results = results[:len(jobs)]
+    # The page passes start now; the text-line mosaics are built while Tesseract reads them.
+    page_reads = _ocr.submit_ocr_tasks(read, jobs)
+    # Scale-normalised text lines (engine.analysis.text_lines): every detected line read at its
+    # own optimal glyph height, packed into mosaics; read in the same pool as the page passes.
+    mosaics.extend(text_line_mosaics(image) if line_reader else [])
+    line_jobs = [(m, psm) for m in range(len(mosaics)) for psm in psms]
+    line_reads = _ocr.submit_ocr_tasks(read, [("lines", j) for j in line_jobs])
+    results = [r() for r in page_reads]
+    line_results = [r() for r in line_reads]
     observations: list[Observation] = []
     passes = []
     for (m, psm), boxes in zip(line_jobs, line_results):

@@ -638,7 +638,7 @@
    ]
   },
   "27.pdf:1": {
-   "note": "held out: labelled blind (before any detection was looked at), never tuned on",
+   "note": "development since 2026-10-09 (was held out; its first blind score is in docs/FUNCTIONAL_ZONES.md)",
    "ignore": [
     [
      855,
@@ -754,6 +754,172 @@
       1148,
       835,
       1325
+     ]
+    }
+   ]
+  },
+  "25.pdf:4": {
+   "note": "held out (2026-10-09): labelled blind before any detection; small-scale multi-unit sheet (NTS, fixtures 10-20 px at 150 DPI); west units only",
+   "region": [
+    180,
+    870,
+    600,
+    1110
+   ],
+   "ignore": [
+    [
+     388,
+     938,
+     402,
+     953
+    ],
+    [
+     463,
+     1041,
+     477,
+     1055
+    ],
+    [
+     435,
+     957,
+     457,
+     975
+    ],
+    [
+     497,
+     1037,
+     515,
+     1057
+    ],
+    [
+     220,
+     970,
+     275,
+     995
+    ],
+    [
+     300,
+     970,
+     355,
+     995
+    ],
+    [
+     462,
+     1005,
+     522,
+     1025
+    ],
+    [
+     398,
+     1028,
+     415,
+     1042
+    ],
+    [
+     527,
+     1028,
+     548,
+     1063
+    ]
+   ],
+   "objects": [
+    {
+     "kind": "toilet",
+     "bbox": [
+      393,
+      897,
+      407,
+      917
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      410,
+      897,
+      435,
+      910
+     ]
+    },
+    {
+     "kind": "bathtub",
+     "bbox": [
+      437,
+      897,
+      456,
+      937
+     ]
+    },
+    {
+     "kind": "refrigerator",
+     "bbox": [
+      327,
+      1078,
+      347,
+      1098
+     ]
+    },
+    {
+     "kind": "range",
+     "bbox": [
+      362,
+      1082,
+      380,
+      1097
+     ]
+    },
+    {
+     "kind": "sink",
+     "bbox": [
+      398,
+      1047,
+      413,
+      1068
+     ]
+    },
+    {
+     "kind": "counter",
+     "bbox": [
+      397,
+      1027,
+      417,
+      1100
+     ]
+    },
+    {
+     "kind": "counter",
+     "bbox": [
+      323,
+      1078,
+      417,
+      1100
+     ]
+    },
+    {
+     "kind": "bathtub",
+     "bbox": [
+      463,
+      1062,
+      482,
+      1100
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      487,
+      1087,
+      500,
+      1107
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      508,
+      1093,
+      535,
+      1107
      ]
     }
    ]

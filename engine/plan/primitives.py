@@ -44,8 +44,73 @@ def _edges(ink: np.ndarray, min_length: float) -> np.ndarray:
     return lines[length >= min_length]
 
 
-def _measure(ink: np.ndarray, edges: np.ndarray) -> list[Stroke]:
-    """Edge -> stroke: ink side, width (median over samples), centerline."""
+def _measure(ink: np.ndarray, edges: np.ndarray, batch: int = 512) -> list[Stroke]:
+    """Edge -> stroke: ink side, width (median over samples), centerline. All edges are measured
+    together in batches; every value is computed as _measure_reference computes it, edge by edge."""
+    h, w = ink.shape
+    on = ink > 0
+    out: list[Stroke] = []
+    if not len(edges):
+        return out
+    p0, p1 = edges[:, :2], edges[:, 2:]
+    d = p1 - p0
+    L = np.maximum(np.hypot(d[:, 0], d[:, 1]), 1e-6)
+    t = d / L[:, None]
+    n = np.stack([-t[:, 1], t[:, 0]], axis=1)
+    s = np.linspace(0.15, 0.85, SAMPLES)                                  # avoid the ends (junctions)
+    pts = p0[:, None, :] + s[None, :, None] * d[:, None, :]               # (N, S, 2)
+
+    def ink_at(xy):
+        x = np.clip(np.round(xy[..., 0]).astype(int), 0, w - 1)
+        y = np.clip(np.round(xy[..., 1]).astype(int), 0, h - 1)
+        return on[y, x]
+
+    plus = ink_at(pts + 1.2 * n[:, None, :]).mean(axis=1)
+    minus = ink_at(pts - 1.2 * n[:, None, :]).mean(axis=1)
+    side = np.where(plus >= minus, 1.0, -1.0)
+    darkness = np.maximum(plus, minus)
+    keep = np.nonzero(darkness >= 0.6)[0]
+    steps = np.arange(0.6, MAX_WIDTH + 0.6, 1.0)
+    span = len(steps) - START_STEPS
+    for b0 in range(0, len(keep), batch):
+        idx = keep[b0:b0 + batch]
+        direction = side[idx, None] * n[idx]                                              # (B, 2)
+        ray = pts[idx][:, :, None, :] + steps[None, None, :, None] * direction[:, None, None, :]   # (B, S, K, 2)
+        raw = ink_at(ray)                                                                 # (B, S, K)
+        valid = raw[:, :, :START_STEPS].any(axis=2)                                       # (B, S)
+        ok = valid.sum(axis=1) >= 0.5 * SAMPLES
+        s0 = np.argmax(raw[:, :, :START_STEPS], axis=2)
+        vals = np.take_along_axis(raw, s0[:, :, None] + np.arange(span)[None, None, :], axis=2)   # (B, S, span)
+        plain = np.where(vals.all(axis=2), span, np.argmin(vals, axis=2)).astype(float)
+        plain_v = np.where(valid, plain, np.nan)
+        s0_v = np.where(valid, s0.astype(float), np.nan)
+        paper = ~vals
+        n_run = span - PAPER_RUN + 1
+        run = paper[:, :, :n_run].copy()
+        for k in range(1, PAPER_RUN):
+            run &= paper[:, :, k:n_run + k]
+        bridged = np.where(run.any(axis=2), np.argmax(run, axis=2), span).astype(float)
+        bridged_v = np.where(valid, bridged, np.nan)
+        for r in np.nonzero(ok)[0]:
+            i = idx[r]
+            pv = plain_v[r][valid[r]]
+            start = float(np.median(s0_v[r][valid[r]]))
+            width = float(np.percentile(pv, WIDTH_Q))
+            if np.mean(np.abs(pv - np.median(pv)) <= 1.0) < 0.6:
+                # the first paper pixel wanders along the stroke: slits of a dense hatch or a scanned
+                # band, not the clean gap to a parallel line; the band ends at the first paper run
+                width = float(np.percentile(bridged_v[r][valid[r]], WIDTH_Q))
+            if width >= MAX_WIDTH - START_STEPS:
+                continue
+            off = direction[r] * (start + width / 2.0 + 0.1)
+            out.append(Stroke(p0=(float(p0[i, 0] + off[0]), float(p0[i, 1] + off[1])),
+                              p1=(float(p1[i, 0] + off[0]), float(p1[i, 1] + off[1])),
+                              width=max(1.0, width), darkness=float(darkness[i])))
+    return out
+
+
+def _measure_reference(ink: np.ndarray, edges: np.ndarray) -> list[Stroke]:
+    """The per-edge implementation of _measure (kept as the reference the batched one must equal)."""
     h, w = ink.shape
     on = ink > 0
     out: list[Stroke] = []

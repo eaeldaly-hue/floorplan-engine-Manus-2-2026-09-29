@@ -142,6 +142,24 @@ def ocr_workers() -> int:
     return max(1, min(DEFAULT_OCR_WORKERS, os.cpu_count() or 1))
 
 
+def submit_ocr_tasks(fn, items) -> list:
+    """Start fn(item) for each item on the OCR pool and return callables yielding the results in
+    item order (the caller can do other work while Tesseract reads). Sequential when the pool is
+    off or when called from inside it."""
+    items = list(items)
+    workers = ocr_workers()
+    nested = threading.current_thread().name.startswith(_POOL_PREFIX)
+    if workers <= 1 or nested:
+        return [(lambda item=item: fn(item)) for item in items]
+    configured_ocr_languages()
+    global _POOL
+    with _POOL_LOCK:
+        if _POOL is None or _POOL._max_workers != workers:
+            _POOL = ThreadPoolExecutor(max_workers=workers, thread_name_prefix=_POOL_PREFIX)
+        pool = _POOL
+    return [pool.submit(fn, item).result for item in items]
+
+
 def run_ocr_tasks(fn, items) -> list:
     """[fn(item) for item in items], with the items read concurrently on the OCR pool."""
     items = list(items)
