@@ -462,7 +462,8 @@ def _glazing(paths, wall_pens, door_segs, band, band_dist, t, wall_dir=None) -> 
     double-lined furniture (tubs, rugs) cannot chain into a closure. Counters, dimension lines and
     furniture edges touching walls are single lines or run along a wall."""
     h, w = band.shape
-    cands = []
+    # straight pieces long enough to span a gap, in path order (vectorised below)
+    pieces = []
     for pi, p in enumerate(paths):
         if p.pen in wall_pens or p.kind != "stroke":
             continue
@@ -475,10 +476,21 @@ def _glazing(paths, wall_pens, door_segs, band, band_dist, t, wall_dir=None) -> 
                 continue
             a, b = seg[1], seg[2]
             L = math.dist(a, b)
-            if L < 1.5 * t:
-                continue
-            mids = [(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f) for f in np.linspace(0.2, 0.8, 9)]
-            if np.mean([band[min(h - 1, max(0, int(round(y)))), min(w - 1, max(0, int(round(x))))] for x, y in mids]) > 0.4:
+            if L >= 1.5 * t:
+                pieces.append((a, b, L))
+    cands = []
+    if pieces:
+        # the middle of the piece must be off the walls: 9 samples, as many on wall as before
+        A = np.array([q[0] for q in pieces], float)
+        B = np.array([q[1] for q in pieces], float)
+        f = np.linspace(0.2, 0.8, 9)
+        mx = A[:, 0, None] + (B[:, 0, None] - A[:, 0, None]) * f[None, :]
+        my = A[:, 1, None] + (B[:, 1, None] - A[:, 1, None]) * f[None, :]
+        xi = np.minimum(w - 1, np.maximum(0, np.round(mx).astype(int)))
+        yi = np.minimum(h - 1, np.maximum(0, np.round(my).astype(int)))
+        on_wall = band[yi, xi].mean(axis=1) > 0.4
+        for (a, b, L), off in zip(pieces, on_wall):
+            if off:
                 continue
             if _alongside(a, b, band, t):
                 continue                      # runs along a wall face (dimension line, counter, shelf)

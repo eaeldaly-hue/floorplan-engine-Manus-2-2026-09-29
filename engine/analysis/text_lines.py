@@ -16,6 +16,10 @@ never a replacement for the full-page passes.
 
 from __future__ import annotations
 
+import dataclasses
+import hashlib
+import threading
+
 from dataclasses import dataclass
 
 import cv2
@@ -47,12 +51,39 @@ def _components(gray: np.ndarray, local: bool = False):
     return ink, stats[1:]
 
 
+_LINES_MEMO: dict = {}
+_LINES_LOCK = threading.Lock()
+
+
 def find_text_lines(gray: np.ndarray, min_h: int = 3) -> list[TextLine]:
-    """Text lines under both binarisations (distinct lines only)."""
+    """Text lines under both binarisations (distinct lines only). The OCR, the reading scores and
+    the context re-read all ask for the lines of the same page: they are found once per page
+    (memo keyed by the exact pixels; each caller gets its own copies)."""
+    key = (gray.shape, str(gray.dtype), min_h, hashlib.blake2b(np.ascontiguousarray(gray).data, digest_size=16).digest())
+    with _LINES_LOCK:
+        hit = _LINES_MEMO.get(key)
+    if hit is None:
+        hit = _find_text_lines(gray, min_h)
+        with _LINES_LOCK:
+            _LINES_MEMO[key] = hit
+            while len(_LINES_MEMO) > 4:
+                _LINES_MEMO.pop(next(iter(_LINES_MEMO)))
+    return [dataclasses.replace(ln) for ln in hit]
+
+
+def _find_text_lines(gray: np.ndarray, min_h: int) -> list[TextLine]:
     out: list[TextLine] = []
+    cell = 64
+    grid: dict = {}
     for local in (False, True):
         for ln in _find_lines(gray, min_h, local):
-            if not any(_iou(ln, o) > 0.6 for o in out):
+            # IoU > 0.6 needs overlapping boxes: only kept lines sharing a grid cell are compared
+            cells = [(gx, gy) for gx in range(ln.x // cell, (ln.x + ln.w) // cell + 1)
+                     for gy in range(ln.y // cell, (ln.y + ln.h) // cell + 1)]
+            near = {k for c in cells for k in grid.get(c, ())}
+            if not any(_iou(ln, out[k]) > 0.6 for k in near):
+                for c in cells:
+                    grid.setdefault(c, []).append(len(out))
                 out.append(ln)
     return out
 

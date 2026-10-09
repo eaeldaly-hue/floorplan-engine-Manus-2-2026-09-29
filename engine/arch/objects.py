@@ -112,7 +112,34 @@ def arcs(elements) -> list:
 
 
 def circles(arc_list, ppc: float, r_cm=(2.0, 30.0)) -> list:
-    """Closed circles (several arcs on one centre covering most of the turn): (cx, cy, r_px, arc element ids)."""
+    """Closed circles (several arcs on one centre covering most of the turn): (cx, cy, r_px, arc element ids).
+    Candidate arcs are pre-selected with a generous box test; the tests and sums are the original ones."""
+    out = []
+    n = len(arc_list)
+    if not n:
+        return out
+    X = np.array([a[0] for a in arc_list], float)
+    Y = np.array([a[1] for a in arc_list], float)
+    used = np.zeros(n, bool)
+    idx = np.arange(n)
+    for k, (cx, cy, r, sw, *_rest) in enumerate(arc_list):
+        if used[k] or not (r_cm[0] * ppc <= r <= r_cm[1] * ppc):
+            continue
+        group = [k]
+        total = sw
+        near = idx[(idx > k) & ~used & (np.abs(X - cx) <= 0.25 * r + 1.0) & (np.abs(Y - cy) <= 0.25 * r + 1.0)]
+        for j in near:
+            x2, y2, r2, s2 = arc_list[j][:4]
+            if math.hypot(x2 - cx, y2 - cy) <= 0.25 * r and 0.8 <= r2 / r <= 1.25:
+                group.append(int(j))
+                total += s2
+        if total >= math.radians(250):
+            used[group] = True
+            out.append((cx, cy, r, tuple(arc_list[g][4] for g in group)))
+    return out
+
+
+def _circles_reference(arc_list, ppc: float, r_cm=(2.0, 30.0)) -> list:
     out = []
     used = set()
     for k, (cx, cy, r, sw, *_rest) in enumerate(arc_list):
@@ -374,6 +401,10 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None, wall_mask: n
 
     # --- furniture from components ------------------------------------------------------------------
     n, lab, st, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
+    AX = np.array([a[0] for a in al], float)
+    AY = np.array([a[1] for a in al], float)
+    AR = np.array([a[2] for a in al], float)
+    curved_ok = (8 * ppc <= AR) & (AR <= 25 * ppc)
     assemblies = []
     tables = []
     for k in range(1, n):
@@ -385,7 +416,7 @@ def vector_objects(cleaned, ocr_boxes=(), ppc: float | None = None, wall_mask: n
         loops = _component_loops(comp, ppc)
         edge = np.concatenate([wall_dist[y, x:x + bw], wall_dist[y + bh - 1, x:x + bw], wall_dist[y:y + bh, x], wall_dist[y:y + bh, x + bw - 1]])
         near_wall = bool(edge.size and edge.min() <= 1.5 * t + 6 * ppc)
-        curved = sum(1 for ax, ay, ar, *_ in al if 8 * ppc <= ar <= 25 * ppc and x <= ax <= x + bw and y <= ay <= y + bh)
+        curved = int(np.count_nonzero(curved_ok & (AX >= x) & (AX <= x + bw) & (AY >= y) & (AY <= y + bh)))
         c = _bath_fixture(comp, (x, y, bw, bh), wall_dist, t, ppc) if near_wall else None
         c = c or _oval_basin(comp, (x, y), drains, ppc)
         c = c or _classify_component(wc, hc, loops, near_wall, curved)

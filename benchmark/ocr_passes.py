@@ -15,6 +15,7 @@ confirmed with the full benchmarks (real_plans names, pdf_plans).
 from __future__ import annotations
 
 import argparse
+import os
 import itertools
 import json
 import math
@@ -24,7 +25,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REAL = ROOT.parent / "Test Cases"
-OUT = ROOT / "output/perf/ocr_passes"
+OUT = Path(os.environ.get("FLOORPLAN_OCR_PASSES_DIR", ROOT / "output/perf/ocr_passes"))
 
 
 def _inputs():

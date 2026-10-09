@@ -93,3 +93,26 @@ def test_batched_stroke_measurement_equals_per_edge():
             cv2.line(ink, (x, y), (x + 15, y + 15), 255, 1)
         edges = P._edges(ink, 8.0)
         assert P._measure(ink, edges, batch=53) == P._measure_reference(ink, edges)
+
+
+def test_vectorised_wall_runs_equal_the_loop():
+    from engine.walls.segments import WallSegmentExtractor as X
+    rng = np.random.default_rng(7)
+    for _ in range(300):
+        row = rng.random(int(rng.integers(1, 200))) < rng.random()
+        for m in (1, 2, 5, 20):
+            assert X._find_runs(row, m) == X._find_runs_reference(row, m)
+
+
+def test_circle_grouping_equals_the_loop():
+    import math
+    from engine.arch.objects import _circles_reference, circles
+    rng = np.random.default_rng(11)
+    for _ in range(30):
+        arcs = []
+        for _ in range(int(rng.integers(5, 80))):
+            cx, cy, r = rng.uniform(0, 400), rng.uniform(0, 400), rng.uniform(2, 40)
+            for q in range(int(rng.integers(1, 5))):
+                arcs.append((cx + rng.normal(0, 0.5), cy + rng.normal(0, 0.5), r * rng.uniform(0.9, 1.1),
+                             math.radians(rng.uniform(40, 100)), len(arcs), 0.0, 0.0))
+        assert circles(arcs, 1.0) == _circles_reference(arcs, 1.0)

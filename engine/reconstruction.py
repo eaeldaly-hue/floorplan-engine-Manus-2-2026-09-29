@@ -145,12 +145,24 @@ def text_blocks(image: np.ndarray) -> list[tuple[float, float]]:
             i = parent[i]
         return i
 
-    for i, a in enumerate(boxes):
-        for j in range(i + 1, len(boxes)):
-            b = boxes[j]
-            g = max(a[4], b[4])
-            if a[0] - g <= b[2] and b[0] - g <= a[2] and a[1] - 1.5 * g <= b[3] and b[1] - 1.5 * g <= a[3]:
-                parent[find(i)] = find(j)
+    # Two lines join when within g (the larger glyph height) across and 1.5 g along: each box grown
+    # by 1.5 x its own glyph height meets its partner's, so pairs are only tested within shared
+    # cells of a grid of the grown boxes (the same pairs as testing all of them).
+    cell = max(32.0, 4.0 * float(np.median([b[4] for b in boxes])))
+    grid: dict = {}
+    for k, (x0, y0, x1, y1, g) in enumerate(boxes):
+        m = 1.5 * g
+        for gx in range(int((x0 - m) // cell), int((x1 + m) // cell) + 1):
+            for gy in range(int((y0 - m) // cell), int((y1 + m) // cell) + 1):
+                grid.setdefault((gx, gy), []).append(k)
+    for members in grid.values():
+        for p_, i in enumerate(members):
+            a = boxes[i]
+            for j in members[p_ + 1:]:
+                b = boxes[j]
+                g = max(a[4], b[4])
+                if a[0] - g <= b[2] and b[0] - g <= a[2] and a[1] - 1.5 * g <= b[3] and b[1] - 1.5 * g <= a[3]:
+                    parent[find(i)] = find(j)
     groups: dict = {}
     for i, b in enumerate(boxes):
         groups.setdefault(find(i), []).append(b)

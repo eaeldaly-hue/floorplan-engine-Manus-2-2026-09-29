@@ -494,6 +494,14 @@ def _ocr_lines_uncached(
 # ---------------------------------------------------------------------------
 
 
+def _invert_flag() -> str:
+    """Tesseract retries low-confidence words as white-on-black text by default. Plans print dark
+    text on paper: measured on the 22 inputs with ground-truth names, the retry costs 26 % of the
+    Tesseract CPU and changes no room name, no room benchmark and no PDF ground truth result
+    (docs/PERFORMANCE_2026-10-10.md). FLOORPLAN_OCR_INVERT=1 turns it back on."""
+    return "" if os.environ.get("FLOORPLAN_OCR_INVERT", "0") == "1" else " -c tessedit_do_invert=0"
+
+
 def _read_words(
     image: np.ndarray,
     *,
@@ -508,7 +516,7 @@ def _read_words(
 
     config = (
         f"--oem 3 --psm {psm} "
-        "-c preserve_interword_spaces=1"
+        "-c preserve_interword_spaces=1" + _invert_flag()
     )
 
     try:

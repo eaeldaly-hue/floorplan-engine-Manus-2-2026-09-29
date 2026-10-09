@@ -48,6 +48,18 @@ class WallSegmentExtractor:
 
     @staticmethod
     def _find_runs(bool_row, min_run_length):
+        """[(start, end)] of the True runs at least min_run_length long (end inclusive)."""
+        row = np.asarray(bool_row, dtype=bool)
+        if not row.any():
+            return []
+        edges = np.diff(np.concatenate(([False], row, [False])).astype(np.int8))
+        starts = np.flatnonzero(edges == 1)
+        stops = np.flatnonzero(edges == -1)                 # one past the run's last index
+        keep = stops - starts >= min_run_length
+        return [(int(a), int(b) - 1) for a, b in zip(starts[keep], stops[keep])]
+
+    @staticmethod
+    def _find_runs_reference(bool_row, min_run_length):
         runs = []
         start = None
 

@@ -1279,10 +1279,31 @@ def _topology(structure, openings: list[dict[str, Any]], rooms: list[dict[str, A
     }
 
 
+def _read_objects(vector, ocr_result, structure, ppc, work_scale) -> list:
+    """Typed objects of the page's vector layer (page frame) mapped into the analysed frame."""
+    from .arch.objects import vector_objects
+
+    if vector is None or not ppc:
+        return []
+    boxes = getattr(ocr_result, "boxes", ()) or ()
+    if work_scale != 1.0:
+        from types import SimpleNamespace
+        boxes = [SimpleNamespace(text=b.text, x=b.x / work_scale, y=b.y / work_scale, width=b.width / work_scale,
+                                 height=b.height / work_scale, confidence=getattr(b, "confidence", 60)) for b in boxes]
+    mask = structure.wall_mask
+    if mask is not None and mask.shape[:2] != vector.layer.shape[:2]:
+        mask = cv2.resize(mask, (vector.layer.shape[1], vector.layer.shape[0]), interpolation=cv2.INTER_NEAREST)
+    objects = vector_objects(vector, boxes, ppc / work_scale, wall_mask=mask,
+                             wall_thickness=structure.wall_thickness / work_scale)
+    for o in objects:
+        o.bbox = tuple(v * work_scale for v in o.bbox)
+    return objects
+
+
 def _functional_zones(building, structure, cleaned, ocr_result, rooms, openings, scale, shape, work_scale=1.0) -> None:
     """Typed objects (engine.arch.objects) and functional zones (engine.arch.zones) in the
     structured plan: one structural space can hold kitchen / dining / living zones."""
-    from .arch.objects import DOOR_CM, px_per_cm, vector_objects, within_walls
+    from .arch.objects import DOOR_CM, px_per_cm, within_walls
     from .arch.zones import infer_zones
 
     # The vector layer is in the page frame; the analysis may run on a rescaled reading (work_scale):
@@ -1296,20 +1317,7 @@ def _functional_zones(building, structure, cleaned, ocr_result, rooms, openings,
         doors = [o["width_pixels"] for o in openings if o["type"] == "door" and o.get("width_pixels")]
         if len(doors) >= 3:
             ppc, how = float(np.median(doors)) / DOOR_CM, f"median of {len(doors)} door widths"
-    objects = []
-    if vector is not None and ppc:
-        boxes = getattr(ocr_result, "boxes", ()) or ()
-        if work_scale != 1.0:
-            from types import SimpleNamespace
-            boxes = [SimpleNamespace(text=b.text, x=b.x / work_scale, y=b.y / work_scale, width=b.width / work_scale,
-                                     height=b.height / work_scale, confidence=getattr(b, "confidence", 60)) for b in boxes]
-        mask = structure.wall_mask
-        if mask is not None and mask.shape[:2] != vector.layer.shape[:2]:
-            mask = cv2.resize(mask, (vector.layer.shape[1], vector.layer.shape[0]), interpolation=cv2.INTER_NEAREST)
-        objects = vector_objects(vector, boxes, ppc / work_scale, wall_mask=mask,
-                                 wall_thickness=structure.wall_thickness / work_scale)
-        for o in objects:
-            o.bbox = tuple(v * work_scale for v in o.bbox)
+    objects = _read_objects(vector, ocr_result, structure, ppc, work_scale)
     objects = within_walls(objects, building)
     labels = [(r["name"], (r["label_center"]["x"], r["label_center"]["y"])) for r in rooms
               if (r.get("label_center") or {}).get("x") is not None]
@@ -1569,6 +1577,8 @@ class FloorPlanAnalyzer:
                 transfer_types(openings, classify_openings(legible.image, legible.structure), legible.scale,
                                structure.wall_thickness)
                 renumber(openings)
+        # the alternative readings are decided and used: release their images and structures
+        hyps = blocks = legible = best = None
         spaces = _join_open_connections(spaces, room_lines, openings, structure)
 
         rooms, scale, unlabeled = _build_room_records(

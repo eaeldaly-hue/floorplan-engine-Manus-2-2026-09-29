@@ -63,6 +63,7 @@ def code_version() -> str:
         h.update(configured_ocr_languages().encode())
         h.update(os.environ.get("FLOORPLAN_TEXT_LINES", "on").encode())
         h.update(os.environ.get("FLOORPLAN_OCR_ROTATIONS", "upright").encode())
+        h.update(os.environ.get("FLOORPLAN_OCR_INVERT", "0").encode())
     except Exception as exc:                       # version unknown -> never share a cache with a known one
         h.update(f"unknown:{type(exc).__name__}".encode())
     return h.hexdigest()[:16]
