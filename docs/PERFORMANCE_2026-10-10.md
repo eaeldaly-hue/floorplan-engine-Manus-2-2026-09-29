@@ -81,3 +81,49 @@ arrays until the result is built. Traced allocation of the structure pass alone 
   the cleaned reading (~5 s) → model, objects, overlays (~4 s).
 - **29.pdf:** OCR-bound (21 s of Tesseract).
 - **Large images:** structure (Hough, gap tracing, kernel search).
+
+## Second cycle (2026-10-10) and final A/B
+
+Additional changes:
+- **Text lines:** found once per page (memo by pixels), and deduplicated and merged on grids.
+- **Vectorised loops:** wall runs, object circles and glazing candidates are vectorised (all exact,
+  with equivalence tests).
+- **Memory:** the alternative readings are released once the openings are typed.
+- **Tesseract's inverted-text retry is off** (`tessedit_do_invert=0`, `FLOORPLAN_OCR_INVERT=1`
+  restores it).
+  - On the 22 inputs with ground-truth names, the retry costs 26 % of the Tesseract CPU (830 → 615 s
+    summed) and changes no room name.
+  - Dimension readings: 623 → 619. One real wall dimension on 22.pdf is lost; one reading on 21.png
+    improves.
+  - The dev benchmark and PDF ground truth are identical with it off.
+
+Measured and reverted:
+- **Speculative object reading beside the room records:** no gain; both are Python and share the
+  GIL.
+- **6 instead of 8 OCR workers:** 29.pdf ~3 s slower, sheets unchanged.
+
+**Final A/B** against 6808f40 (same session, interleaved, 11 inputs). Outputs (rooms, spaces,
+openings, zones) are identical on every input. Machine speed drifted between rounds, so each round
+is paired:
+
+| | Total HEAD 6808f40 | Total now | Saved | Median per input |
+|---|---|---|---|---|
+| Round 1, cold | 417 s | 230 s | 45 % | 43 % (range 20-58 %) |
+| Round 2, cold | 452 s | 186 s | 59 % | 49 % (range 10-72 %) |
+| Warm (OCR from cache) | 212 s | 111 s | 47 % | |
+
+Per input (cold, mean of two rounds):
+
+| Input | Before | After |
+|---|---|---|
+| 3.pdf p5 | 51.8 s | 25.0 s |
+| 3.pdf p4 | 67.3 s | 35.7 s |
+| 22.pdf p6 | 105.5 s (HEAD round 2 outlier; 88.1 s round 1) | 39.6 s |
+| 24.pdf | 70.3 s | 30.2 s |
+| 29.pdf | 43.4 s | 22.3 s |
+| 26.jpg | 40.2 s | 18.3 s |
+| 9.jpg | 27.6 s | 17.0 s |
+| 1.png | 12.2 s | 6.7 s |
+| 20.jpg | 7.4 s | 6.3 s |
+| 27.pdf | 5.8 s | 4.8 s |
+| 7.png | 3.0 s | 2.1 s |

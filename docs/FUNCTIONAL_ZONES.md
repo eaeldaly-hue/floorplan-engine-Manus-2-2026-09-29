@@ -198,3 +198,36 @@ What changed (general drafting conventions, no drawing-specific values):
     that OCR misreads;
   - bar stools touching the island are missed.
 - **Raster plans:** still no objects.
+
+## Furniture, second round (2026-10-09/10)
+
+Precision / recall (`python -m benchmark.objects_eval`):
+
+| Plan | Role | P / R |
+|---|---|---|
+| 3.pdf p5 | development | 0.92 / 0.89 |
+| 22.pdf p6 (unit 201) | development | 0.88 / 0.71 |
+| 27.pdf p1 | development since this round (first blind score 0.29 / 0.17) | 0.75 / 0.50 |
+| 25.pdf p4 | held out; diagnosed once, not rule-tuned (first score 0.14 / 0.09) | 0.21 / 0.27 |
+| 25.pdf p5 | **held out, labelled blind, scored once** | **0.00 / 0.00 (0 of 21)** |
+
+What changed:
+- **Fixtures from closed outlines:** tub, shower tray, basin with a drain, and a toilet bowl with
+  its tank at a wall.
+- **Context rules:**
+  - an outline on an appliance is a detail of it;
+  - a piece inside a fixture is part of it;
+  - a "basin" at a bed's corner is a lamp;
+  - a basin without kitchen context is a washbasin.
+- **Untyped vectors:** read when the cleaner cannot type the walls.
+- **Small-scale sheets:** read at a canonical 1 px/cm.
+
+**Why 25.pdf p5 scores zero: scale, not recognition.**
+- That sheet's poché layer types no doors, so the scale falls back to the analysis' wall-gap widths.
+- Their median (35 px) is inflated by merged / spurious openings; the same set's p4 measures doors
+  of ~23 px.
+- The scale is therefore over-estimated ~1.5×, every fixture appears 2/3 of its size, and every
+  size rule fails.
+
+The next step is a more robust scale: door swing-arc radii or standard fixture sizes, validated on
+every page with a known scale.

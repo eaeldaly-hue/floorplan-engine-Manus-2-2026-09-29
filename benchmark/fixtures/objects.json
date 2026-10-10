@@ -759,7 +759,7 @@
    ]
   },
   "25.pdf:4": {
-   "note": "held out (2026-10-09): labelled blind before any detection; small-scale multi-unit sheet (NTS, fixtures 10-20 px at 150 DPI); west units only",
+   "note": "was held out; diagnosed once on 2026-10-09 (scale / resolution root cause), not rule-tuned",
    "region": [
     180,
     870,
@@ -920,6 +920,244 @@
       1093,
       535,
       1107
+     ]
+    }
+   ]
+  },
+  "25.pdf:5": {
+   "note": "held out (2026-10-10): labelled blind before any detection on this page; same set as 25.pdf:4, different units; small-scale sheet",
+   "region": [
+    1035,
+    1000,
+    1445,
+    1140
+   ],
+   "ignore": [
+    [
+     1098,
+     1068,
+     1120,
+     1095
+    ],
+    [
+     1123,
+     1068,
+     1145,
+     1095
+    ],
+    [
+     1340,
+     1068,
+     1360,
+     1095
+    ],
+    [
+     1363,
+     1068,
+     1385,
+     1095
+    ],
+    [
+     1093,
+     1048,
+     1112,
+     1058
+    ],
+    [
+     1370,
+     1048,
+     1388,
+     1058
+    ]
+   ],
+   "objects": [
+    {
+     "kind": "washbasin",
+     "bbox": [
+      1045,
+      1027,
+      1060,
+      1045
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      1045,
+      1055,
+      1065,
+      1067
+     ]
+    },
+    {
+     "kind": "bathtub",
+     "bbox": [
+      1050,
+      1075,
+      1088,
+      1090
+     ]
+    },
+    {
+     "kind": "range",
+     "bbox": [
+      1158,
+      1077,
+      1177,
+      1092
+     ]
+    },
+    {
+     "kind": "sink",
+     "bbox": [
+      1195,
+      1077,
+      1222,
+      1090
+     ]
+    },
+    {
+     "kind": "counter",
+     "bbox": [
+      1098,
+      1070,
+      1225,
+      1095
+     ]
+    },
+    {
+     "kind": "sink",
+     "bbox": [
+      1263,
+      1077,
+      1283,
+      1090
+     ]
+    },
+    {
+     "kind": "range",
+     "bbox": [
+      1307,
+      1077,
+      1325,
+      1092
+     ]
+    },
+    {
+     "kind": "counter",
+     "bbox": [
+      1255,
+      1070,
+      1385,
+      1095
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      1425,
+      1028,
+      1437,
+      1045
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      1418,
+      1053,
+      1437,
+      1067
+     ]
+    },
+    {
+     "kind": "bathtub",
+     "bbox": [
+      1393,
+      1075,
+      1437,
+      1090
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      1102,
+      1100,
+      1127,
+      1112
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      1133,
+      1102,
+      1147,
+      1118
+     ]
+    },
+    {
+     "kind": "bathtub",
+     "bbox": [
+      1152,
+      1100,
+      1172,
+      1140
+     ]
+    },
+    {
+     "kind": "bathtub",
+     "bbox": [
+      1178,
+      1100,
+      1197,
+      1140
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      1203,
+      1102,
+      1217,
+      1118
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      1222,
+      1100,
+      1242,
+      1112
+     ]
+    },
+    {
+     "kind": "washbasin",
+     "bbox": [
+      1370,
+      1100,
+      1392,
+      1112
+     ]
+    },
+    {
+     "kind": "toilet",
+     "bbox": [
+      1400,
+      1102,
+      1413,
+      1118
+     ]
+    },
+    {
+     "kind": "bathtub",
+     "bbox": [
+      1418,
+      1100,
+      1437,
+      1140
      ]
     }
    ]
