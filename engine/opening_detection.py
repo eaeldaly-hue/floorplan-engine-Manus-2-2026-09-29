@@ -445,6 +445,30 @@ STRONG_DOOR_SYMBOLS = {"swing arc", "double swing", "door leaf", "sliding panels
 GLAZING_SYMBOLS = {"glazing lines", "dashed glazing line"}
 
 
+WIDE_OUTLINE_DOOR = 2.5      # x the drawing's own single-door width
+
+
+def _unsymbolled_wide_interior(results: list[dict], candidates: list[OpeningCandidate]) -> None:
+    """An outlined gap between two rooms with no door symbol is read as a door drawn without its
+    swing. When it is more than WIDE_OUTLINE_DOOR times as wide as this drawing's own single doors
+    (median of its swing-arc / leaf doors, at least 3), no door symbol supports it and it is wider than
+    any hinged door: it stays an unclassified opening (cased opening, counter front, bench line).
+    Measured on the opening benchmark: such doors that are correct are <= 1.23 x the plan's single
+    door, the false ones 2.68-3.85 x."""
+    single = [c.width for r, c in zip(results, candidates)
+              if r["type"] == "door" and r["evidence"]["symbol"] in ("swing arc", "door leaf")]
+    if len(single) < 3:
+        return
+    door_w = float(np.median(single))
+    for r, c in zip(results, candidates):
+        e = r["evidence"]
+        if r["type"] == "door" and e["symbol"] == "outline only" and e["room_relation"] == "between_rooms" \
+                and c.width > WIDE_OUTLINE_DOOR * door_w:
+            r["type"], r["confidence"] = "opening", 0.45
+            e["reason"] = (f"Outlined gap between two rooms with no door symbol, {c.width / door_w:.1f}x as wide "
+                           f"as this drawing's doors: wider than a door drawn without its swing; left unclassified.")
+
+
 def apply_plan_conventions(results: list[dict], candidates: list[OpeningCandidate], t_ref: float) -> None:
     """Plan-level symbol vocabulary: decide outline-only exterior openings from how the
     same drawing marks its doors and windows.
@@ -489,6 +513,7 @@ def classify_openings(image: np.ndarray, structure: StructureResult | None = Non
     dist = cv2.distanceTransform(cv2.bitwise_not(thin), cv2.DIST_L2, 3)
     raw_thin = thin
     results = [classify_candidate(c, s, thin, dist, pixel_scale, raw_thin) for c in s.candidates]
+    _unsymbolled_wide_interior(results, s.candidates)
     apply_plan_conventions(results, s.candidates, max(s.wall_thickness, 1.0))
     openings = []
     for c_out, result in zip(public.candidates, results):
