@@ -953,8 +953,39 @@ def _line_bridged_gaps(wall_mask, thin, typical_t, existing) -> list[tuple]:
                and abs(float(np.dot(mid - (np.asarray(c[0]) + np.asarray(c[1])) / 2, c[2]))) <= 0.5 * c[4]
                for c in existing):
             continue  # already found as an axis gap
+        if partner is None and any(not paired and _same_drawn_line(start, stop, f0, f1, typical_t)
+                                   for f0, f1, _t, paired in found):
+            continue  # another piece of the same drawn line, already reported
         found.append((start, stop, thickness, partner is not None))
     return found
+
+
+def _same_drawn_line(a, b, p, q, typical_t) -> bool:
+    """Hough pieces of one drawn line can come out tilted the opposite ways; traced to the line's
+    ends they still span the same stretch, but they cross each other, and the de-duplication of
+    parallel pieces does not catch them. Two single lines are one drawn line when they cross,
+    point the same way within 15 degrees, cover the same stretch (middles within a quarter of the
+    shorter span along it) and their middles are closer than the narrowest line pair (0.4 t) across
+    it. Distinct parallel lines never cross; distinct openings on one wall line do not share a stretch."""
+    a, b, p, q = (np.asarray(v, float) for v in (a, b, p, q))
+    d, e = b - a, q - p
+    La, Lp = float(np.linalg.norm(d)), float(np.linalg.norm(e))
+    if La < 1e-6 or Lp < 1e-6:
+        return False
+    d, e = d / La, e / Lp
+    if abs(float(np.dot(d, e))) < 0.966 or not _segments_cross(a, b, p, q):
+        return False
+    shift = (a + b) / 2 - (p + q) / 2
+    return abs(float(np.dot(shift, e))) <= 0.25 * min(La, Lp) and abs(float(np.dot(shift, [-e[1], e[0]]))) < 0.4 * typical_t
+
+
+def _segments_cross(a, b, p, q) -> bool:
+    """Do segments a-b and p-q intersect (strictly, not just touch at an end)?"""
+    def side(o, u, v):
+        return (u[0] - o[0]) * (v[1] - o[1]) - (u[1] - o[1]) * (v[0] - o[0])
+    d1, d2 = side(p, q, a), side(p, q, b)
+    d3, d4 = side(a, b, p), side(a, b, q)
+    return d1 * d2 < 0 and d3 * d4 < 0
 
 
 def _merge_through_fragments(wall_mask, merged: list[list]) -> list[list]:
