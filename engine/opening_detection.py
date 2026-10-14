@@ -21,6 +21,7 @@ drawing does not support a decision the opening is returned as UNKNOWN (type
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import dataclass
 from typing import Any
@@ -469,6 +470,37 @@ def _unsymbolled_wide_interior(results: list[dict], candidates: list[OpeningCand
                            f"as this drawing's doors: wider than a door drawn without its swing; left unclassified.")
 
 
+FRAME_STRIP = 0.5            # x the width of the piece it belongs to
+
+
+def _frame_strips(candidates: list[OpeningCandidate], thin: np.ndarray) -> dict[int, int]:
+    """Narrow end pieces of a split wall gap that belong to the next piece: {strip index: piece index}.
+
+    A window drawn with jamb ticks near its ends is split by the gap splitter at the ticks
+    (engine.structure._split_gap). A strip narrower than FRAME_STRIP x its neighbour, end to end with
+    it on the same wall line, and crossed by exactly the same lines along the wall is that
+    neighbour's frame or side pane, not an opening of its own. Separately drawn openings keep their
+    own symbols (a door has no glazing lines, a bare gap has none at all) and adjacent windows of
+    one glazing are of comparable width (measured: 0.75-0.91 x; frame strips 0.20-0.23 x)."""
+    def lines(c):
+        return {round(l.v) for l in band_lines(thin, Frame.of(c)) if l.coverage >= 0.6}
+    gaps = [k for k, c in enumerate(candidates) if c.source == "wall_gap"]
+    found: dict[int, int] = {}
+    for j in gaps:
+        cj = candidates[j]
+        for i in gaps:
+            ci = candidates[i]
+            if i == j or cj.width >= FRAME_STRIP * ci.width or abs(float(np.dot(ci.tangent, cj.tangent))) < 0.999:
+                continue
+            if min(math.dist(p, q) for p in (ci.start, ci.end) for q in (cj.start, cj.end)) > 1.0:
+                continue
+            shared = lines(ci)
+            if shared and shared == lines(cj):
+                found[j] = i
+                break
+    return {j: i for j, i in found.items() if i not in found}
+
+
 def apply_plan_conventions(results: list[dict], candidates: list[OpeningCandidate], t_ref: float) -> None:
     """Plan-level symbol vocabulary: decide outline-only exterior openings from how the
     same drawing marks its doors and windows.
@@ -512,12 +544,22 @@ def classify_openings(image: np.ndarray, structure: StructureResult | None = Non
     thin = thin_lines(s.symbol_ink, s.wall_mask)
     dist = cv2.distanceTransform(cv2.bitwise_not(thin), cv2.DIST_L2, 3)
     raw_thin = thin
-    results = [classify_candidate(c, s, thin, dist, pixel_scale, raw_thin) for c in s.candidates]
-    _unsymbolled_wide_interior(results, s.candidates)
-    apply_plan_conventions(results, s.candidates, max(s.wall_thickness, 1.0))
+    strips = _frame_strips(s.candidates, thin)
+    keep = [k for k in range(len(s.candidates)) if k not in strips]
+    work = [s.candidates[k] for k in keep]
+    results = [classify_candidate(c, s, thin, dist, pixel_scale, raw_thin) for c in work]
+    _unsymbolled_wide_interior(results, work)
+    apply_plan_conventions(results, work, max(s.wall_thickness, 1.0))
     openings = []
-    for c_out, result in zip(public.candidates, results):
-        c = c_out
+    for k, result in zip(keep, results):
+        c = public.candidates[k]
+        absorbed = [public.candidates[j] for j, i in strips.items() if i == k]
+        if absorbed:   # report the whole wall opening: the pane and its frame strips
+            ends = [c.start, c.end] + [p for a in absorbed for p in (a.start, a.end)]
+            d = np.asarray(c.end, float) - np.asarray(c.start, float)
+            u = [float(np.dot(np.asarray(p, float) - c.start, d)) for p in ends]
+            c = dataclasses.replace(c, start=tuple(map(float, ends[int(np.argmin(u))])), end=tuple(map(float, ends[int(np.argmax(u))])))
+            result["evidence"]["frame_strips"] = len(absorbed)
         width_ft = _width_ft(c.width, pixel_scale)
         openings.append({
             "id": "",
