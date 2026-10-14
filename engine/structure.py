@@ -1685,6 +1685,8 @@ def analyze_structure(image: np.ndarray, deskew: bool = True) -> StructureResult
     rejected = [OpeningCandidate(c.id, to_original(c.start), to_original(c.end), c.thickness, c.orientation,
                                  c.line_coverage, c.found_from, c.source, c.sides, c.relation, c.jambs)
                 for c in work.rejected_candidates]
+    # bands keep their orientation label: it names the wall's direction in the drawing's own grid
+    bands = [WallBand(to_original(b.p0), to_original(b.p1), b.thickness, b.orientation) for b in work.bands]
     spaces = []
     for sp in work.spaces:
         poly = [tuple(int(round(v)) for v in to_original(pt)) for pt in sp["polygon"]]
@@ -1695,7 +1697,7 @@ def analyze_structure(image: np.ndarray, deskew: bool = True) -> StructureResult
     return StructureResult(
         gray=first.gray, ink=first.ink, symbol_ink=first.symbol_ink, wall_mask=back(work.wall_mask),
         wall_kernel=work.wall_kernel, line_width=work.line_width, wall_thickness=work.wall_thickness,
-        bands=work.bands, candidates=candidates, cracks=work.cracks, sealed_mask=back(work.sealed_mask),
+        bands=bands, candidates=candidates, cracks=work.cracks, sealed_mask=back(work.sealed_mask),
         space_labels=back(work.space_labels, dtype=np.int32), spaces=spaces, wall_adjacency=work.wall_adjacency,
         skew_degrees=skew, work=work, to_original=to_original, rejected_candidates=rejected,
     )

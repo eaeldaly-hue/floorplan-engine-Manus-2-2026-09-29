@@ -10,8 +10,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-LINEAR = {"x", "y", "width", "height", "start", "end", "center", "p0", "p1", "polygon", "width_pixels", "width_px",
-          "thickness_px", "wall_thickness_px", "pixels_per_unit", "px_per_cm", "scale_px_per_cm"}
+LINEAR = {"x", "y", "width", "height", "start", "end", "center", "p0", "p1", "polygon", "hinges", "width_pixels", "width_px",
+          "thickness_px", "wall_thickness_px", "solid_length_px", "open_length_px", "pixels_per_unit", "px_per_cm", "scale_px_per_cm"}
 AREA = {"area_pixels", "area_px"}
 KEEP = {"dimensions", "summary", "image", "graph", "envelope", "plan_model", "reconstruction", "scale", "cleaning"}
 
