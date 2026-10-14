@@ -10,7 +10,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
@@ -22,6 +22,8 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp", "tif", "tiff", "pdf"}
 MAX_PIXELS = 25_000_000           # PDF pages (first-page upload path)
 ANALYSIS_PIXELS = 24_000_000      # images above this are reduced to it
 MAX_DECODED_PIXELS = 200_000_000  # refuse beyond (memory)
+# result keys the CAD exporters read (engine.export), stored next to each result
+EXPORT_KEYS = ("source_name", "image", "pixel_scale", "scale_estimate", "source", "building", "rooms", "openings")
 
 
 def _decode_upload(payload: bytes, filename: str) -> tuple[np.ndarray, list[str]]:
@@ -171,6 +173,13 @@ def create_app(test_config: dict | None = None) -> Flask:
                 result["page_image_url"] = f"/api/results/{result_id}/page.png"
         if extra:
             result.update(extra)
+        if result.get("building"):
+            # what the CAD exporters read (engine.export): the model, its rooms, openings, scale and source
+            (result_dir / "export.json").write_text(json.dumps({k: result.get(k) for k in EXPORT_KEYS}))
+            from engine.export.dwg import backend
+            result["exports"] = {"dxf_url": f"/api/results/{result_id}/export.dxf"}
+            if backend()["available"]:
+                result["exports"]["dwg_url"] = f"/api/results/{result_id}/export.dwg"
         _trim_old_results(result_root, keep=30)
         return jsonify(result)
 
@@ -392,6 +401,61 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not _valid_id(result_id) or not (result_root / result_id / "page.png").is_file():
             return jsonify({"error": "انتهت صلاحية النتيجة أو لم تعد موجودة."}), 404
         return send_from_directory(result_root / result_id, "page.png", mimetype="image/png", max_age=0)
+
+    # ---------- CAD export (engine.export): DXF always, DWG when a local converter is installed ----------
+
+    def _export_source(result_id: str):
+        path = result_root / result_id / "export.json"
+        if not _valid_id(result_id) or not path.is_file():
+            return None
+        return json.loads(path.read_text())
+
+    def _download_name(result: dict, ext: str) -> str:
+        stem = Path(str(result.get("source_name") or "floorplan")).stem or "floorplan"
+        return "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in stem) + ext
+
+    @app.get("/api/export/formats")
+    def export_formats():
+        from engine.export.dwg import backend
+        return jsonify({"dxf": {"available": True, "backend": "ezdxf"}, "dwg": backend()})
+
+    @app.get("/api/results/<result_id>/export.dxf")
+    def export_dxf(result_id: str):
+        from engine.export.dxf import ExportError, dxf_bytes
+        result = _export_source(result_id)
+        if result is None:
+            return jsonify({"error": "The result has expired or does not exist.", "code": "not_found"}), 404
+        try:
+            data, report = dxf_bytes(result)
+        except ExportError as exc:
+            return jsonify({"error": str(exc), "code": "no_model"}), 422
+        response = Response(data, mimetype="application/dxf")
+        response.headers["Content-Disposition"] = f'attachment; filename="{_download_name(result, ".dxf")}"'
+        response.headers["X-Export-Units"] = report.units
+        response.headers["X-Export-Skipped"] = str(len(report.skipped))
+        return response
+
+    @app.get("/api/results/<result_id>/export.dwg")
+    def export_dwg(result_id: str):
+        from engine.export.dwg import DwgConversionError, DwgUnavailable, dwg_bytes
+        from engine.export.dxf import ExportError
+        result = _export_source(result_id)
+        if result is None:
+            return jsonify({"error": "The result has expired or does not exist.", "code": "not_found"}), 404
+        try:
+            data, report = dwg_bytes(result, version=request.args.get("version", "R2000"))
+        except DwgUnavailable as exc:
+            return jsonify({"error": str(exc), "code": "dwg_unavailable"}), 503
+        except (ExportError, ValueError) as exc:
+            return jsonify({"error": str(exc), "code": "bad_request"}), 422
+        except DwgConversionError as exc:
+            logger.warning("DWG conversion failed: %s", exc)
+            return jsonify({"error": f"DWG conversion failed: {exc}", "code": "dwg_conversion_failed"}), 500
+        response = Response(data, mimetype="application/acad")
+        response.headers["Content-Disposition"] = f'attachment; filename="{_download_name(result, ".dwg")}"'
+        response.headers["X-Export-Units"] = report["units"]
+        response.headers["X-Export-Skipped"] = str(len(report["skipped"]))
+        return response
 
     @app.errorhandler(RequestEntityTooLarge)
     def too_large(_error):

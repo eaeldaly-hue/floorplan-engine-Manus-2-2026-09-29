@@ -228,6 +228,17 @@ export function renderRaw(data) {
   $('download-rooms-overlay').download = `${base}-rooms-overlay.png`;
   $('download-openings-overlay').href = data.openings_overlay_url;
   $('download-openings-overlay').download = `${base}-openings-overlay.png`;
+  // CAD exports: offered only when the result has a model (DXF) and a DWG converter is installed (DWG)
+  for (const [id, key, ext] of [['download-dxf', 'dxf_url', 'dxf'], ['download-dwg', 'dwg_url', 'dwg']]) {
+    const url = data.exports?.[key];
+    $(id).hidden = !url;
+    if (url) {
+      $(id).href = url;
+      $(id).download = `${base}.${ext}`;
+    } else {
+      $(id).removeAttribute('href');
+    }
+  }
 }
 
 // Reflect the viewer's highlighted entity in the tables.
